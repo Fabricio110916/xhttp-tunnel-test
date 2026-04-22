@@ -10,12 +10,8 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <uses-permission android:name="android.permission.WAKE_LOCK" />
-    <uses-permission android:name="android.permission.BIND_VPN_SERVICE" />
 
     <permission
         android:name="com.xhttp.tunnel.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
@@ -29,7 +25,7 @@
         android:debuggable="true"
         android:extractNativeLibs="true"
         android:icon="@drawable/ic_launcher"
-        android:label="XHTTP VPN"
+        android:label="XHTTP Teste"
         android:theme="@style/Theme.AppCompat.Light.DarkActionBar"
         android:usesCleartextTraffic="true" >
         <activity
@@ -46,12 +42,7 @@
         <service
             android:name="com.xhttp.tunnel.XHttpVpnService"
             android:exported="false"
-            android:foregroundServiceType="dataSync"
-            android:permission="android.permission.BIND_VPN_SERVICE" >
-            <intent-filter>
-                <action android:name="android.net.VpnService" />
-            </intent-filter>
-        </service>
+            android:foregroundServiceType="dataSync" />
 
         <provider
             android:name="androidx.startup.InitializationProvider"

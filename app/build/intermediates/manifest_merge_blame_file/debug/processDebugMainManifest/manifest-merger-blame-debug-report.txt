@@ -14,111 +14,90 @@
 12    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 12-->/root/xhttp-android/app/src/main/AndroidManifest.xml:6:5-79
 12-->/root/xhttp-android/app/src/main/AndroidManifest.xml:6:22-76
-13    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
-13-->/root/xhttp-android/app/src/main/AndroidManifest.xml:7:5-76
-13-->/root/xhttp-android/app/src/main/AndroidManifest.xml:7:22-73
-14    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+13    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+13-->/root/xhttp-android/app/src/main/AndroidManifest.xml:7:5-77
+13-->/root/xhttp-android/app/src/main/AndroidManifest.xml:7:22-74
+14    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 14-->/root/xhttp-android/app/src/main/AndroidManifest.xml:8:5-77
 14-->/root/xhttp-android/app/src/main/AndroidManifest.xml:8:22-74
-15    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
-15-->/root/xhttp-android/app/src/main/AndroidManifest.xml:9:5-87
-15-->/root/xhttp-android/app/src/main/AndroidManifest.xml:9:22-84
-16    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-16-->/root/xhttp-android/app/src/main/AndroidManifest.xml:10:5-77
-16-->/root/xhttp-android/app/src/main/AndroidManifest.xml:10:22-74
-17    <uses-permission android:name="android.permission.WAKE_LOCK" />
-17-->/root/xhttp-android/app/src/main/AndroidManifest.xml:11:5-68
-17-->/root/xhttp-android/app/src/main/AndroidManifest.xml:11:22-65
-18    <uses-permission android:name="android.permission.BIND_VPN_SERVICE" />
-18-->/root/xhttp-android/app/src/main/AndroidManifest.xml:12:5-75
-18-->/root/xhttp-android/app/src/main/AndroidManifest.xml:12:22-72
+15
+16    <permission
+16-->[androidx.core:core:1.10.0] /root/.gradle/caches/8.11.1/transforms/c3ac15506fce8b1b1322f92fab60e830/transformed/core-1.10.0/AndroidManifest.xml:22:5-24:47
+17        android:name="com.xhttp.tunnel.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+17-->[androidx.core:core:1.10.0] /root/.gradle/caches/8.11.1/transforms/c3ac15506fce8b1b1322f92fab60e830/transformed/core-1.10.0/AndroidManifest.xml:23:9-81
+18        android:protectionLevel="signature" />
+18-->[androidx.core:core:1.10.0] /root/.gradle/caches/8.11.1/transforms/c3ac15506fce8b1b1322f92fab60e830/transformed/core-1.10.0/AndroidManifest.xml:24:9-44
 19
-20    <permission
-20-->[androidx.core:core:1.10.0] /root/.gradle/caches/8.11.1/transforms/c3ac15506fce8b1b1322f92fab60e830/transformed/core-1.10.0/AndroidManifest.xml:22:5-24:47
-21        android:name="com.xhttp.tunnel.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
-21-->[androidx.core:core:1.10.0] /root/.gradle/caches/8.11.1/transforms/c3ac15506fce8b1b1322f92fab60e830/transformed/core-1.10.0/AndroidManifest.xml:23:9-81
-22        android:protectionLevel="signature" />
-22-->[androidx.core:core:1.10.0] /root/.gradle/caches/8.11.1/transforms/c3ac15506fce8b1b1322f92fab60e830/transformed/core-1.10.0/AndroidManifest.xml:24:9-44
-23
-24    <uses-permission android:name="com.xhttp.tunnel.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
-24-->[androidx.core:core:1.10.0] /root/.gradle/caches/8.11.1/transforms/c3ac15506fce8b1b1322f92fab60e830/transformed/core-1.10.0/AndroidManifest.xml:26:5-97
-24-->[androidx.core:core:1.10.0] /root/.gradle/caches/8.11.1/transforms/c3ac15506fce8b1b1322f92fab60e830/transformed/core-1.10.0/AndroidManifest.xml:26:22-94
-25
-26    <application
-26-->/root/xhttp-android/app/src/main/AndroidManifest.xml:14:5-42:19
-27        android:allowBackup="true"
-27-->/root/xhttp-android/app/src/main/AndroidManifest.xml:15:9-35
-28        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
-28-->[androidx.core:core:1.10.0] /root/.gradle/caches/8.11.1/transforms/c3ac15506fce8b1b1322f92fab60e830/transformed/core-1.10.0/AndroidManifest.xml:28:18-86
-29        android:debuggable="true"
-30        android:extractNativeLibs="true"
-31        android:icon="@drawable/ic_launcher"
-31-->/root/xhttp-android/app/src/main/AndroidManifest.xml:16:9-45
-32        android:label="XHTTP VPN"
-32-->/root/xhttp-android/app/src/main/AndroidManifest.xml:17:9-34
-33        android:theme="@style/Theme.AppCompat.Light.DarkActionBar"
-33-->/root/xhttp-android/app/src/main/AndroidManifest.xml:18:9-67
-34        android:usesCleartextTraffic="true" >
-34-->/root/xhttp-android/app/src/main/AndroidManifest.xml:19:9-44
-35        <activity
-35-->/root/xhttp-android/app/src/main/AndroidManifest.xml:22:9-30:20
-36            android:name="com.xhttp.tunnel.MainActivity"
-36-->/root/xhttp-android/app/src/main/AndroidManifest.xml:23:13-41
-37            android:exported="true"
-37-->/root/xhttp-android/app/src/main/AndroidManifest.xml:24:13-36
-38            android:windowSoftInputMode="adjustResize" >
-38-->/root/xhttp-android/app/src/main/AndroidManifest.xml:25:13-55
-39            <intent-filter>
-39-->/root/xhttp-android/app/src/main/AndroidManifest.xml:26:13-29:29
-40                <action android:name="android.intent.action.MAIN" />
-40-->/root/xhttp-android/app/src/main/AndroidManifest.xml:27:17-69
-40-->/root/xhttp-android/app/src/main/AndroidManifest.xml:27:25-66
+20    <uses-permission android:name="com.xhttp.tunnel.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
+20-->[androidx.core:core:1.10.0] /root/.gradle/caches/8.11.1/transforms/c3ac15506fce8b1b1322f92fab60e830/transformed/core-1.10.0/AndroidManifest.xml:26:5-97
+20-->[androidx.core:core:1.10.0] /root/.gradle/caches/8.11.1/transforms/c3ac15506fce8b1b1322f92fab60e830/transformed/core-1.10.0/AndroidManifest.xml:26:22-94
+21
+22    <application
+22-->/root/xhttp-android/app/src/main/AndroidManifest.xml:10:5-33:19
+23        android:allowBackup="true"
+23-->/root/xhttp-android/app/src/main/AndroidManifest.xml:11:9-35
+24        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
+24-->[androidx.core:core:1.10.0] /root/.gradle/caches/8.11.1/transforms/c3ac15506fce8b1b1322f92fab60e830/transformed/core-1.10.0/AndroidManifest.xml:28:18-86
+25        android:debuggable="true"
+26        android:extractNativeLibs="true"
+27        android:icon="@drawable/ic_launcher"
+27-->/root/xhttp-android/app/src/main/AndroidManifest.xml:12:9-45
+28        android:label="XHTTP Teste"
+28-->/root/xhttp-android/app/src/main/AndroidManifest.xml:13:9-36
+29        android:theme="@style/Theme.AppCompat.Light.DarkActionBar"
+29-->/root/xhttp-android/app/src/main/AndroidManifest.xml:14:9-67
+30        android:usesCleartextTraffic="true" >
+30-->/root/xhttp-android/app/src/main/AndroidManifest.xml:15:9-44
+31        <activity
+31-->/root/xhttp-android/app/src/main/AndroidManifest.xml:18:9-26:20
+32            android:name="com.xhttp.tunnel.MainActivity"
+32-->/root/xhttp-android/app/src/main/AndroidManifest.xml:19:13-41
+33            android:exported="true"
+33-->/root/xhttp-android/app/src/main/AndroidManifest.xml:20:13-36
+34            android:windowSoftInputMode="adjustResize" >
+34-->/root/xhttp-android/app/src/main/AndroidManifest.xml:21:13-55
+35            <intent-filter>
+35-->/root/xhttp-android/app/src/main/AndroidManifest.xml:22:13-25:29
+36                <action android:name="android.intent.action.MAIN" />
+36-->/root/xhttp-android/app/src/main/AndroidManifest.xml:23:17-69
+36-->/root/xhttp-android/app/src/main/AndroidManifest.xml:23:25-66
+37
+38                <category android:name="android.intent.category.LAUNCHER" />
+38-->/root/xhttp-android/app/src/main/AndroidManifest.xml:24:17-77
+38-->/root/xhttp-android/app/src/main/AndroidManifest.xml:24:27-74
+39            </intent-filter>
+40        </activity>
 41
-42                <category android:name="android.intent.category.LAUNCHER" />
-42-->/root/xhttp-android/app/src/main/AndroidManifest.xml:28:17-77
-42-->/root/xhttp-android/app/src/main/AndroidManifest.xml:28:27-74
-43            </intent-filter>
-44        </activity>
-45
-46        <service
-46-->/root/xhttp-android/app/src/main/AndroidManifest.xml:32:9-40:19
-47            android:name="com.xhttp.tunnel.XHttpVpnService"
-47-->/root/xhttp-android/app/src/main/AndroidManifest.xml:33:13-44
-48            android:exported="false"
-48-->/root/xhttp-android/app/src/main/AndroidManifest.xml:34:13-37
-49            android:foregroundServiceType="dataSync"
-49-->/root/xhttp-android/app/src/main/AndroidManifest.xml:35:13-53
-50            android:permission="android.permission.BIND_VPN_SERVICE" >
-50-->/root/xhttp-android/app/src/main/AndroidManifest.xml:36:13-69
-51            <intent-filter>
-51-->/root/xhttp-android/app/src/main/AndroidManifest.xml:37:13-39:29
-52                <action android:name="android.net.VpnService" />
-52-->/root/xhttp-android/app/src/main/AndroidManifest.xml:38:17-65
-52-->/root/xhttp-android/app/src/main/AndroidManifest.xml:38:25-62
-53            </intent-filter>
-54        </service>
-55
-56        <provider
-56-->[androidx.emoji2:emoji2:1.2.0] /root/.gradle/caches/8.11.1/transforms/112444f2cc91c7370342971b0e83ddb0/transformed/jetified-emoji2-1.2.0/AndroidManifest.xml:24:9-32:20
-57            android:name="androidx.startup.InitializationProvider"
-57-->[androidx.emoji2:emoji2:1.2.0] /root/.gradle/caches/8.11.1/transforms/112444f2cc91c7370342971b0e83ddb0/transformed/jetified-emoji2-1.2.0/AndroidManifest.xml:25:13-67
-58            android:authorities="com.xhttp.tunnel.androidx-startup"
-58-->[androidx.emoji2:emoji2:1.2.0] /root/.gradle/caches/8.11.1/transforms/112444f2cc91c7370342971b0e83ddb0/transformed/jetified-emoji2-1.2.0/AndroidManifest.xml:26:13-68
-59            android:exported="false" >
-59-->[androidx.emoji2:emoji2:1.2.0] /root/.gradle/caches/8.11.1/transforms/112444f2cc91c7370342971b0e83ddb0/transformed/jetified-emoji2-1.2.0/AndroidManifest.xml:27:13-37
-60            <meta-data
-60-->[androidx.emoji2:emoji2:1.2.0] /root/.gradle/caches/8.11.1/transforms/112444f2cc91c7370342971b0e83ddb0/transformed/jetified-emoji2-1.2.0/AndroidManifest.xml:29:13-31:52
-61                android:name="androidx.emoji2.text.EmojiCompatInitializer"
-61-->[androidx.emoji2:emoji2:1.2.0] /root/.gradle/caches/8.11.1/transforms/112444f2cc91c7370342971b0e83ddb0/transformed/jetified-emoji2-1.2.0/AndroidManifest.xml:30:17-75
-62                android:value="androidx.startup" />
-62-->[androidx.emoji2:emoji2:1.2.0] /root/.gradle/caches/8.11.1/transforms/112444f2cc91c7370342971b0e83ddb0/transformed/jetified-emoji2-1.2.0/AndroidManifest.xml:31:17-49
-63            <meta-data
-63-->[androidx.lifecycle:lifecycle-process:2.4.1] /root/.gradle/caches/8.11.1/transforms/03ebd84fcb3323dd1ac1e71642b30755/transformed/jetified-lifecycle-process-2.4.1/AndroidManifest.xml:31:13-33:52
-64                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
-64-->[androidx.lifecycle:lifecycle-process:2.4.1] /root/.gradle/caches/8.11.1/transforms/03ebd84fcb3323dd1ac1e71642b30755/transformed/jetified-lifecycle-process-2.4.1/AndroidManifest.xml:32:17-78
-65                android:value="androidx.startup" />
-65-->[androidx.lifecycle:lifecycle-process:2.4.1] /root/.gradle/caches/8.11.1/transforms/03ebd84fcb3323dd1ac1e71642b30755/transformed/jetified-lifecycle-process-2.4.1/AndroidManifest.xml:33:17-49
-66        </provider>
-67    </application>
-68
-69</manifest>
+42        <service
+42-->/root/xhttp-android/app/src/main/AndroidManifest.xml:28:9-31:56
+43            android:name="com.xhttp.tunnel.XHttpVpnService"
+43-->/root/xhttp-android/app/src/main/AndroidManifest.xml:29:13-44
+44            android:exported="false"
+44-->/root/xhttp-android/app/src/main/AndroidManifest.xml:30:13-37
+45            android:foregroundServiceType="dataSync" />
+45-->/root/xhttp-android/app/src/main/AndroidManifest.xml:31:13-53
+46
+47        <provider
+47-->[androidx.emoji2:emoji2:1.2.0] /root/.gradle/caches/8.11.1/transforms/112444f2cc91c7370342971b0e83ddb0/transformed/jetified-emoji2-1.2.0/AndroidManifest.xml:24:9-32:20
+48            android:name="androidx.startup.InitializationProvider"
+48-->[androidx.emoji2:emoji2:1.2.0] /root/.gradle/caches/8.11.1/transforms/112444f2cc91c7370342971b0e83ddb0/transformed/jetified-emoji2-1.2.0/AndroidManifest.xml:25:13-67
+49            android:authorities="com.xhttp.tunnel.androidx-startup"
+49-->[androidx.emoji2:emoji2:1.2.0] /root/.gradle/caches/8.11.1/transforms/112444f2cc91c7370342971b0e83ddb0/transformed/jetified-emoji2-1.2.0/AndroidManifest.xml:26:13-68
+50            android:exported="false" >
+50-->[androidx.emoji2:emoji2:1.2.0] /root/.gradle/caches/8.11.1/transforms/112444f2cc91c7370342971b0e83ddb0/transformed/jetified-emoji2-1.2.0/AndroidManifest.xml:27:13-37
+51            <meta-data
+51-->[androidx.emoji2:emoji2:1.2.0] /root/.gradle/caches/8.11.1/transforms/112444f2cc91c7370342971b0e83ddb0/transformed/jetified-emoji2-1.2.0/AndroidManifest.xml:29:13-31:52
+52                android:name="androidx.emoji2.text.EmojiCompatInitializer"
+52-->[androidx.emoji2:emoji2:1.2.0] /root/.gradle/caches/8.11.1/transforms/112444f2cc91c7370342971b0e83ddb0/transformed/jetified-emoji2-1.2.0/AndroidManifest.xml:30:17-75
+53                android:value="androidx.startup" />
+53-->[androidx.emoji2:emoji2:1.2.0] /root/.gradle/caches/8.11.1/transforms/112444f2cc91c7370342971b0e83ddb0/transformed/jetified-emoji2-1.2.0/AndroidManifest.xml:31:17-49
+54            <meta-data
+54-->[androidx.lifecycle:lifecycle-process:2.4.1] /root/.gradle/caches/8.11.1/transforms/03ebd84fcb3323dd1ac1e71642b30755/transformed/jetified-lifecycle-process-2.4.1/AndroidManifest.xml:31:13-33:52
+55                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
+55-->[androidx.lifecycle:lifecycle-process:2.4.1] /root/.gradle/caches/8.11.1/transforms/03ebd84fcb3323dd1ac1e71642b30755/transformed/jetified-lifecycle-process-2.4.1/AndroidManifest.xml:32:17-78
+56                android:value="androidx.startup" />
+56-->[androidx.lifecycle:lifecycle-process:2.4.1] /root/.gradle/caches/8.11.1/transforms/03ebd84fcb3323dd1ac1e71642b30755/transformed/jetified-lifecycle-process-2.4.1/AndroidManifest.xml:33:17-49
+57        </provider>
+58    </application>
+59
+60</manifest>

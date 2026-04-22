@@ -1,9 +1,9 @@
 -- Merging decision tree log ---
 manifest
-ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:2:1-43:12
-INJECTED from /root/xhttp-android/app/src/main/AndroidManifest.xml:2:1-43:12
-INJECTED from /root/xhttp-android/app/src/main/AndroidManifest.xml:2:1-43:12
-INJECTED from /root/xhttp-android/app/src/main/AndroidManifest.xml:2:1-43:12
+ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:2:1-34:12
+INJECTED from /root/xhttp-android/app/src/main/AndroidManifest.xml:2:1-34:12
+INJECTED from /root/xhttp-android/app/src/main/AndroidManifest.xml:2:1-34:12
+INJECTED from /root/xhttp-android/app/src/main/AndroidManifest.xml:2:1-34:12
 MERGED from [com.google.android.material:material:1.9.0] /root/.gradle/caches/8.11.1/transforms/51cf2afdb13ded1c8361d4bd954d092c/transformed/material-1.9.0/AndroidManifest.xml:17:1-26:12
 MERGED from [androidx.appcompat:appcompat-resources:1.6.1] /root/.gradle/caches/8.11.1/transforms/022902b4d9426a1390c92214b148a151/transformed/jetified-appcompat-resources-1.6.1/AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.constraintlayout:constraintlayout:2.0.1] /root/.gradle/caches/8.11.1/transforms/3ceea66b81a0d4f63ba2fca9cb9d26f3/transformed/constraintlayout-2.0.1/AndroidManifest.xml:2:1-11:12
@@ -62,33 +62,17 @@ uses-permission#android.permission.ACCESS_NETWORK_STATE
 ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:6:5-79
 	android:name
 		ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:6:22-76
-uses-permission#android.permission.ACCESS_WIFI_STATE
-ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:7:5-76
-	android:name
-		ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:7:22-73
 uses-permission#android.permission.FOREGROUND_SERVICE
+ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:7:5-77
+	android:name
+		ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:7:22-74
+uses-permission#android.permission.POST_NOTIFICATIONS
 ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:8:5-77
 	android:name
 		ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:8:22-74
-uses-permission#android.permission.FOREGROUND_SERVICE_DATA_SYNC
-ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:9:5-87
-	android:name
-		ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:9:22-84
-uses-permission#android.permission.POST_NOTIFICATIONS
-ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:10:5-77
-	android:name
-		ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:10:22-74
-uses-permission#android.permission.WAKE_LOCK
-ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:11:5-68
-	android:name
-		ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:11:22-65
-uses-permission#android.permission.BIND_VPN_SERVICE
-ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:12:5-75
-	android:name
-		ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:12:22-72
 application
-ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:14:5-42:19
-INJECTED from /root/xhttp-android/app/src/main/AndroidManifest.xml:14:5-42:19
+ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:10:5-33:19
+INJECTED from /root/xhttp-android/app/src/main/AndroidManifest.xml:10:5-33:19
 MERGED from [com.google.android.material:material:1.9.0] /root/.gradle/caches/8.11.1/transforms/51cf2afdb13ded1c8361d4bd954d092c/transformed/material-1.9.0/AndroidManifest.xml:24:5-20
 MERGED from [com.google.android.material:material:1.9.0] /root/.gradle/caches/8.11.1/transforms/51cf2afdb13ded1c8361d4bd954d092c/transformed/material-1.9.0/AndroidManifest.xml:24:5-20
 MERGED from [androidx.constraintlayout:constraintlayout:2.0.1] /root/.gradle/caches/8.11.1/transforms/3ceea66b81a0d4f63ba2fca9cb9d26f3/transformed/constraintlayout-2.0.1/AndroidManifest.xml:9:5-20
@@ -108,51 +92,43 @@ MERGED from [androidx.startup:startup-runtime:1.1.1] /root/.gradle/caches/8.11.1
 	android:appComponentFactory
 		ADDED from [androidx.core:core:1.10.0] /root/.gradle/caches/8.11.1/transforms/c3ac15506fce8b1b1322f92fab60e830/transformed/core-1.10.0/AndroidManifest.xml:28:18-86
 	android:label
-		ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:17:9-34
+		ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:13:9-36
 	tools:ignore
-		ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:20:9-46
+		ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:16:9-46
 	android:icon
-		ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:16:9-45
+		ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:12:9-45
 	android:allowBackup
-		ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:15:9-35
+		ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:11:9-35
 	android:theme
-		ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:18:9-67
+		ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:14:9-67
 	android:usesCleartextTraffic
-		ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:19:9-44
+		ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:15:9-44
 activity#com.xhttp.tunnel.MainActivity
-ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:22:9-30:20
+ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:18:9-26:20
 	android:windowSoftInputMode
-		ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:25:13-55
+		ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:21:13-55
 	android:exported
-		ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:24:13-36
+		ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:20:13-36
 	android:name
-		ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:23:13-41
+		ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:19:13-41
 intent-filter#action:name:android.intent.action.MAIN+category:name:android.intent.category.LAUNCHER
-ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:26:13-29:29
+ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:22:13-25:29
 action#android.intent.action.MAIN
-ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:27:17-69
+ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:23:17-69
 	android:name
-		ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:27:25-66
+		ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:23:25-66
 category#android.intent.category.LAUNCHER
-ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:28:17-77
+ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:24:17-77
 	android:name
-		ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:28:27-74
+		ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:24:27-74
 service#com.xhttp.tunnel.XHttpVpnService
-ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:32:9-40:19
+ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:28:9-31:56
 	android:exported
-		ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:34:13-37
-	android:permission
-		ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:36:13-69
+		ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:30:13-37
 	android:foregroundServiceType
-		ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:35:13-53
+		ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:31:13-53
 	android:name
-		ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:33:13-44
-intent-filter#action:name:android.net.VpnService
-ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:37:13-39:29
-action#android.net.VpnService
-ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:38:17-65
-	android:name
-		ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:38:25-62
+		ADDED from /root/xhttp-android/app/src/main/AndroidManifest.xml:29:13-44
 uses-sdk
 INJECTED from /root/xhttp-android/app/src/main/AndroidManifest.xml reason: use-sdk injection requested
 INJECTED from /root/xhttp-android/app/src/main/AndroidManifest.xml
