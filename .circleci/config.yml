@@ -1,15 +1,18 @@
 version: 2.1
 
+orbs:
+  android: circleci/android@2.4.0
+
 jobs:
   build:
-    docker:
-      - image: cimg/android:2024.01
+    executor:
+      name: android/android-machine
+      resource-class: medium
     steps:
       - checkout
       - run:
           name: Build APK
           command: |
-            echo "sdk.dir=/opt/android-sdk-linux" > local.properties
             echo "android.useAndroidX=true" >> gradle.properties
             echo "android.enableJetifier=true" >> gradle.properties
             chmod +x gradlew
@@ -19,7 +22,6 @@ jobs:
           destination: apk
 
 workflows:
-  version: 2
   build:
     jobs:
       - build
