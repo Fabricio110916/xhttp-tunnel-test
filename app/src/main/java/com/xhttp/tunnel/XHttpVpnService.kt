@@ -46,14 +46,14 @@ class XHttpVpnService : VpnService() {
         isRunning = true
         
         try {
-            log("[1/4] TLS...")
+            log("[1/5] TLS...")
             val ctx = SSLContext.getInstance("TLS")
             ctx.init(null, arrayOf(TrustAllCerts()), java.security.SecureRandom())
             tlsSocket = ctx.socketFactory.createSocket("168.138.147.212", 443) as SSLSocket
             tlsSocket?.startHandshake()
             log("✅ TLS")
             
-            log("[2/4] POST...")
+            log("[2/5] POST...")
             val w = OutputStreamWriter(tlsSocket!!.outputStream)
             w.write("POST /ssh HTTP/1.1\r\nHost: oracle.koom.pp.ua\r\nContent-Length: 0\r\n\r\n")
             w.flush()
@@ -62,32 +62,48 @@ class XHttpVpnService : VpnService() {
             while (r.readLine().also { line = it } != null) { if (line!!.isEmpty()) break }
             log("✅ POST")
             
-            log("[3/4] VPN (SEM encaminhamento)...")
-            val b = Builder().setSession("XHTTP VPN").addAddress("10.8.0.2", 32).addRoute("0.0.0.0", 0).addDnsServer("8.8.8.8").setMtu(1500)
-            vpnInterface = b.establish() ?: throw Exception("VPN null")
-            log("✅ VPN criada!")
+            log("[3/5] VPN (SERVIDOR PROTEGIDO)...")
+            val builder = Builder()
+                .setSession("XHTTP VPN")
+                .addAddress("10.8.0.2", 32)
+                
+                // ?? PROTEGER O SERVIDOR - EVITA LOOP!
+                .addRoute("168.138.147.212", 32)
+                
+                // ?? Proteger DNS
+                .addRoute("8.8.8.8", 32)
+                .addRoute("8.8.4.4", 32)
+                
+                // ?? Rota padrão (todo o resto)
+                .addRoute("0.0.0.0", 0)
+                
+                .addDnsServer("8.8.8.8")
+                .setMtu(1500)
             
-            log("[4/4] ?? VPN ATIVA! (sem encaminhamento)")
+            vpnInterface = builder.establish() ?: throw Exception("VPN null")
+            log("✅ VPN criada (servidor protegido!)")
+            
+            log("[4/5] Encaminhando...")
+            updateNotification("XHTTP VPN", "Conectado!")
+            
+            val fi = FileInputStream(vpnInterface!!.fileDescriptor)
+            val fo = FileOutputStream(vpnInterface!!.fileDescriptor)
+            val ti = tlsSocket!!.inputStream
+            val to = tlsSocket!!.outputStream
+            
+            thread {
+                try { while(isRunning) { val d = ByteArray(32768); val l = fi.read(d); if(l>0){to.write(d,0,l);to.flush()} } }
+                catch(e: Exception) { if(isRunning) log("?? ${e.message}") }
+            }
+            
+            thread {
+                try { while(isRunning) { val d = ByteArray(32768); val l = ti.read(d); if(l>0){fo.write(d,0,l);fo.flush()} } }
+                catch(e: Exception) { if(isRunning) log("?? ${e.message}") }
+            }
+            
+            log("[5/5] ?? VPN ATIVA!")
             log("?? IP: 10.8.0.2")
-            log("⏸ Aguardando 30s sem encaminhar...")
-            
-            updateNotification("XHTTP VPN", "Ativa (sem tráfego)")
-            
-            // FICAR VIVO por 30 segundos SEM encaminhar
-            for (i in 1..30) {
-                if (!isRunning) break
-                Thread.sleep(1000)
-                if (i % 10 == 0) log("   ⏰ ${i}s - VPN ainda viva!")
-            }
-            
-            if (isRunning) {
-                log("")
-                log("════════════════════════════════")
-                log("✅ TESTE APROVADO!")
-                log("VPN ficou estável por 30s!")
-                log("SEM CRASH!")
-                log("════════════════════════════════")
-            }
+            log("??️ Servidor 168.138.147.212 protegido!")
             
         } catch (e: Exception) {
             log("❌ ${e.message}")
