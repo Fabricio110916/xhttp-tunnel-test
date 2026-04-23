@@ -1,6 +1,8 @@
 package com.xhttp.tunnel
 
+import android.app.Activity
 import android.content.Intent
+import android.net.VpnService
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -14,8 +16,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var statusText: TextView
     private lateinit var logText: TextView
     private lateinit var scrollView: ScrollView
-    
     private val handler = Handler(Looper.getMainLooper())
+    private val VPN_REQUEST_CODE = 100
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -35,11 +37,16 @@ class MainActivity : AppCompatActivity() {
         }
         
         startButton.setOnClickListener {
-            val intent = Intent(this, XHttpVpnService::class.java)
-            startService(intent)
-            startButton.isEnabled = false
-            stopButton.isEnabled = true
-            statusText.text = "Túnel Ativo"
+            log("?? Solicitando permissão VPN...")
+            val intent = VpnService.prepare(this)
+            if (intent != null) {
+                // Mostrar diálogo de permissão
+                startActivityForResult(intent, VPN_REQUEST_CODE)
+            } else {
+                // Permissão já concedida
+                log("✅ Permissão já concedida!")
+                startVpnService()
+            }
         }
         
         stopButton.setOnClickListener {
@@ -48,8 +55,35 @@ class MainActivity : AppCompatActivity() {
             startButton.isEnabled = true
             stopButton.isEnabled = false
             statusText.text = "Parado"
+            log("⏹ VPN parada pelo usuário")
         }
         
-        logText.text = "🚀 Teste: Apenas Túnel XHTTP (sem VPN)\n📍 168.138.147.212:443\n\n"
+        logText.text = "?? XHTTP VPN\n?? 168.138.147.212:443\n\n"
+    }
+    
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == VPN_REQUEST_CODE && resultCode == Activity.RESULT_OK) {
+            log("✅ Permissão VPN concedida!")
+            startVpnService()
+        } else {
+            log("❌ Permissão VPN negada!")
+        }
+    }
+    
+    private fun startVpnService() {
+        log("▶ Iniciando serviço VPN...")
+        val intent = Intent(this, XHttpVpnService::class.java)
+        startService(intent)
+        startButton.isEnabled = false
+        stopButton.isEnabled = true
+        statusText.text = "VPN Ativa"
+    }
+    
+    private fun log(msg: String) {
+        handler.post {
+            logText.append("$msg\n")
+            scrollView.post { scrollView.fullScroll(android.view.View.FOCUS_DOWN) }
+        }
     }
 }
