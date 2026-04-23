@@ -86,7 +86,7 @@ class XHttpVpnService : VpnService() {
                 .addDnsServer("8.8.8.8")
                 .addDnsServer("8.8.4.4")
                 .setMtu(1500)
-                .setBlocking(false)
+                // REMOVIDO .setBlocking(false) !!!
             
             vpnInterface = builder.establish()
             
@@ -115,7 +115,7 @@ class XHttpVpnService : VpnService() {
                         }
                     }
                 } catch (e: Exception) {
-                    if (isRunning) log("?? ${e.message}")
+                    if (isRunning) log("📤 ${e.message}")
                 }
             }
             
@@ -131,12 +131,12 @@ class XHttpVpnService : VpnService() {
                         }
                     }
                 } catch (e: Exception) {
-                    if (isRunning) log("?? ${e.message}")
+                    if (isRunning) log("📥 ${e.message}")
                 }
             }
             
             log("[5/5] VPN ATIVA!")
-            log("?? IP: 10.8.0.2 | DNS: 8.8.8.8")
+            log("🎉 IP: 10.8.0.2 | DNS: 8.8.8.8")
             
         } catch (e: Exception) {
             log("❌ FALHA: ${e.message}")
