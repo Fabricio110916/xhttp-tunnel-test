@@ -2,6 +2,7 @@ package com.xhttp.tunnel
 
 import android.app.*
 import android.content.Intent
+import android.net.VpnService
 import android.os.*
 import android.util.Log
 import androidx.core.app.NotificationCompat
@@ -10,19 +11,20 @@ import java.net.*
 import javax.net.ssl.*
 import kotlin.concurrent.thread
 
-class XHttpVpnService : Service() {
+class XHttpVpnService : VpnService() {
     
+    private var vpnInterface: ParcelFileDescriptor? = null
     private var tlsSocket: SSLSocket? = null
     private var isRunning = false
     
     companion object {
         private const val NOTIFICATION_ID = 999
-        private const val CHANNEL_ID = "xhttp_tunnel"
+        private const val CHANNEL_ID = "xhttp_vpn"
         var logCallback: ((String) -> Unit)? = null
     }
     
     private fun log(msg: String) {
-        Log.i("XHttpTunnel", msg)
+        Log.i("XHttpVPN", msg)
         logCallback?.invoke(msg)
     }
     
@@ -33,33 +35,30 @@ class XHttpVpnService : Service() {
     
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == "STOP") {
-            stopTunnel()
+            stopVpn()
             return START_NOT_STICKY
         }
         if (!isRunning) {
-            startForeground(NOTIFICATION_ID, createNotification("Túnel XHTTP ativo"))
-            thread { startTunnel() }
+            startForeground(NOTIFICATION_ID, createNotification("VPN Iniciando..."))
+            thread { startVpn() }
         }
         return START_STICKY
     }
     
-    private fun startTunnel() {
+    private fun startVpn() {
         isRunning = true
         
         try {
-            log("════════════════════════════════")
-            log("?? TESTE: APENAS TÚNEL XHTTP")
-            log("════════════════════════════════")
-            
-            log("[1/3] Conectando TLS...")
+            log("[1/5] Conectando TLS...")
             val sslContext = SSLContext.getInstance("TLS")
             sslContext.init(null, arrayOf(TrustAllCerts()), java.security.SecureRandom())
             val factory = sslContext.socketFactory
             tlsSocket = factory.createSocket("168.138.147.212", 443) as SSLSocket
+            tlsSocket?.soTimeout = 30000
             tlsSocket?.startHandshake()
             log("✅ TLS: ${tlsSocket?.session?.cipherSuite}")
             
-            log("[2/3] Enviando POST...")
+            log("[2/5] Enviando POST...")
             val writer = OutputStreamWriter(tlsSocket!!.outputStream)
             writer.write("POST /ssh HTTP/1.1\r\n")
             writer.write("Host: oracle.koom.pp.ua\r\n")
@@ -68,65 +67,122 @@ class XHttpVpnService : Service() {
             
             val reader = BufferedReader(InputStreamReader(tlsSocket!!.inputStream))
             var line: String?
+            var status = ""
             while (reader.readLine().also { line = it } != null) {
+                if (line!!.startsWith("HTTP/")) status = line!!
                 if (line!!.isEmpty()) break
+            }
+            
+            if (!status.contains("200")) {
+                throw Exception("HTTP $status")
             }
             log("✅ HTTP 200 OK")
             
-            log("[3/3] ?? TÚNEL XHTTP ESTABELECIDO!")
-            log("")
-            log("⏸ AGUARDANDO 60 SEGUNDOS...")
-            log("   (SEM TUN, SEM VPN - APENAS TÚNEL)")
+            log("[3/5] Criando interface TUN...")
+            val builder = Builder()
+                .setSession("XHTTP VPN")
+                .addAddress("10.8.0.2", 32)
+                .addRoute("0.0.0.0", 0)
+                .addDnsServer("8.8.8.8")
+                .addDnsServer("8.8.4.4")
+                .setMtu(1500)
+                .setBlocking(false)
             
-            for (i in 1..60) {
-                if (!isRunning) break
-                Thread.sleep(1000)
-                if (i % 10 == 0) {
-                    log("   ⏰ $i segundos...")
+            vpnInterface = builder.establish()
+            
+            if (vpnInterface == null) {
+                throw Exception("establish() retornou null")
+            }
+            log("✅ TUN criada!")
+            
+            log("[4/5] Encaminhando tráfego...")
+            updateNotification("VPN Conectada", "Tráfego roteado via XHTTP")
+            
+            val input = FileInputStream(vpnInterface!!.fileDescriptor)
+            val output = FileOutputStream(vpnInterface!!.fileDescriptor)
+            val tlsIn = tlsSocket!!.inputStream
+            val tlsOut = tlsSocket!!.outputStream
+            
+            thread {
+                try {
+                    val buffer = ByteArray(1500)
+                    var len: Int
+                    while (isRunning) {
+                        len = input.read(buffer)
+                        if (len > 0) {
+                            tlsOut.write(buffer, 0, len)
+                            tlsOut.flush()
+                        }
+                    }
+                } catch (e: Exception) {
+                    if (isRunning) log("?? ${e.message}")
                 }
             }
             
-            if (isRunning) {
-                log("")
-                log("✅ TESTE CONCLUÍDO! O túnel funciona!")
+            thread {
+                try {
+                    val buffer = ByteArray(1500)
+                    var len: Int
+                    while (isRunning) {
+                        len = tlsIn.read(buffer)
+                        if (len > 0) {
+                            output.write(buffer, 0, len)
+                            output.flush()
+                        }
+                    }
+                } catch (e: Exception) {
+                    if (isRunning) log("?? ${e.message}")
+                }
             }
             
+            log("[5/5] VPN ATIVA!")
+            log("?? IP: 10.8.0.2 | DNS: 8.8.8.8")
+            
         } catch (e: Exception) {
-            log("❌ ${e.message}")
-            stopTunnel()
+            log("❌ FALHA: ${e.message}")
+            stopVpn()
         }
     }
     
-    private fun stopTunnel() {
+    private fun stopVpn() {
         isRunning = false
         try { tlsSocket?.close() } catch (e: Exception) {}
+        try { vpnInterface?.close() } catch (e: Exception) {}
         stopForeground(true)
         stopSelf()
-        log("⏹ Túnel parado")
+        log("⏹ VPN parada")
     }
     
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(CHANNEL_ID, "XHTTP Tunnel", NotificationManager.IMPORTANCE_LOW)
+            val channel = NotificationChannel(CHANNEL_ID, "XHTTP VPN", NotificationManager.IMPORTANCE_LOW)
             getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
         }
     }
     
     private fun createNotification(text: String): Notification {
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("XHTTP Tunnel Teste")
+            .setContentTitle("XHTTP VPN")
             .setContentText(text)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setOngoing(true)
             .build()
     }
     
-    override fun onDestroy() {
-        stopTunnel()
-        super.onDestroy()
+    private fun updateNotification(title: String, content: String) {
+        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle(title)
+            .setContentText(content)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setOngoing(true)
+            .build()
+        getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, notification)
     }
     
-    override fun onBind(intent: Intent?): IBinder? = null
+    override fun onDestroy() {
+        stopVpn()
+        super.onDestroy()
+    }
     
     class TrustAllCerts : X509TrustManager {
         override fun checkClientTrusted(chain: Array<java.security.cert.X509Certificate>, authType: String) {}
