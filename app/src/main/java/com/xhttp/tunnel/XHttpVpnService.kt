@@ -46,7 +46,7 @@ class XHttpVpnService : VpnService() {
         isRunning = true
         
         try {
-            log("[1/4] Conectando túnel...")
+            log("[1/4] Conectando...")
             val ctx = SSLContext.getInstance("TLS")
             ctx.init(null, arrayOf(TrustAllCerts()), java.security.SecureRandom())
             tlsSocket = ctx.socketFactory.createSocket("168.138.147.212", 443) as SSLSocket
@@ -71,40 +71,36 @@ class XHttpVpnService : VpnService() {
                 .setMtu(1500)
             
             vpnInterface = builder.establish() ?: throw Exception("VPN null")
+            val fd = vpnInterface!!.fileDescriptor
             log("✅ VPN criada")
             
-            log("[3/4] Testando UPLOAD (VPN → TLS)...")
-            updateNotification("XHTTP VPN", "Testando upload...")
+            log("[3/4] Testando DOWNLOAD com fd...")
+            updateNotification("XHTTP VPN", "Testando download...")
             
-            val tlsOut = tlsSocket!!.outputStream
+            val tlsIn = tlsSocket!!.inputStream
             
-            // APENAS UPLOAD: VPN -> TLS
-            thread(name = "Upload") {
+            // Download usando o fd DIRETO (sem FileOutputStream)
+            thread(name = "Download") {
                 try {
-                    val vpnIn = FileInputStream(vpnInterface!!.fileDescriptor)
                     val buffer = ByteArray(32768)
                     var len: Int
-                    var total = 0L
                     while (isRunning) {
-                        len = vpnIn.read(buffer)
+                        len = tlsIn.read(buffer)
                         if (len > 0) {
-                            tlsOut.write(buffer, 0, len)
-                            tlsOut.flush()
-                            total += len
-                            if (total >= 100000) {
-                                log("?? Upload: $total bytes")
-                                total = 0
-                            }
+                            // Escrever usando FileOutputStream
+                            val out = FileOutputStream(fd)
+                            out.write(buffer, 0, len)
+                            out.flush()
+                            out.close()
                         }
                     }
                 } catch (e: Exception) {
-                    if (isRunning) log("?? Upload: ${e.message}")
+                    if (isRunning) log("?? ${e.message}")
                 }
             }
             
-            log("[4/4] ?? VPN com UPLOAD ativo!")
+            log("[4/4] ?? VPN com DOWNLOAD!")
             log("?? IP: 10.8.0.2")
-            log("?? Apenas upload (VPN→TLS)")
             
         } catch (e: Exception) {
             log("❌ ${e.message}")
