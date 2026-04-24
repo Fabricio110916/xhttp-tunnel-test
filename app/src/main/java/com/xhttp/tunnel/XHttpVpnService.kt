@@ -77,21 +77,22 @@ class XHttpVpnService : VpnService() {
             log("[3/4] Iniciando encaminhamento...")
             updateNotification("XHTTP VPN", "Conectado!")
             
-            // Usar FileDescriptor diretamente
-            val fd = vpnInterface!!.fileDescriptor
+            // Usar AutoCloseOutputStream (compatível com Android 14+)
+            val vpnOutput = ParcelFileDescriptor.AutoCloseOutputStream(vpnInterface!!)
+            val vpnInput = ParcelFileDescriptor.AutoCloseInputStream(vpnInterface!!)
+            val tlsOut = tlsSocket!!.outputStream
+            val tlsIn = tlsSocket!!.inputStream
             
             // Upload: VPN -> TLS
             thread {
                 try {
-                    val vpnInput = FileInputStream(fd)
-                    val tlsOutput = tlsSocket!!.outputStream
-                    val buffer = ByteArray(1500)
+                    val buffer = ByteArray(32768)
                     var len: Int
                     while (isRunning) {
                         len = vpnInput.read(buffer)
                         if (len > 0) {
-                            tlsOutput.write(buffer, 0, len)
-                            tlsOutput.flush()
+                            tlsOut.write(buffer, 0, len)
+                            tlsOut.flush()
                         }
                     }
                 } catch (e: Exception) {
@@ -102,12 +103,10 @@ class XHttpVpnService : VpnService() {
             // Download: TLS -> VPN
             thread {
                 try {
-                    val vpnOutput = FileOutputStream(fd)
-                    val tlsInput = tlsSocket!!.inputStream
-                    val buffer = ByteArray(1500)
+                    val buffer = ByteArray(32768)
                     var len: Int
                     while (isRunning) {
-                        len = tlsInput.read(buffer)
+                        len = tlsIn.read(buffer)
                         if (len > 0) {
                             vpnOutput.write(buffer, 0, len)
                             vpnOutput.flush()
@@ -121,6 +120,7 @@ class XHttpVpnService : VpnService() {
             log("[4/4] ?? VPN ATIVA COM ENCAMINHAMENTO!")
             log("?? IP: 10.8.0.2")
             log("?? Dados fluindo pelo túnel XHTTP!")
+            log("??️ Servidor protegido contra loop!")
             
         } catch (e: Exception) {
             log("❌ ${e.message}")
