@@ -4,7 +4,6 @@ import android.app.*
 import android.content.Intent
 import android.net.VpnService
 import android.os.*
-import android.system.OsConstants
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import java.io.*
@@ -59,63 +58,67 @@ class XHttpVpnService : VpnService() {
             val r = BufferedReader(InputStreamReader(tlsSocket!!.inputStream))
             var line: String?
             while (r.readLine().also { line = it } != null) { if (line!!.isEmpty()) break }
-            log("✅ Túnel")
+            log("✅ Túnel OK")
             
-            log("[2/4] VPN...")
+            log("[2/4] Criando VPN...")
             val builder = Builder()
                 .setSession("XHTTP VPN")
                 .addAddress("10.8.0.2", 32)
                 .addRoute("168.138.147.212", 32)
                 .addRoute("8.8.8.8", 32)
+                .addRoute("8.8.4.4", 32)
                 .addRoute("0.0.0.0", 0)
                 .addDnsServer("8.8.8.8")
+                .addDnsServer("8.8.4.4")
                 .setMtu(1500)
             
-            vpnInterface = builder.establish() ?: throw Exception("VPN null")
-            val fd = vpnInterface!!.fileDescriptor
-            log("✅ VPN")
+            // ?? EXCLUIR O PRÓPRIO APP DA VPN!
+            // Isso evita que o tráfego do túnel TLS passe pela VPN
+            builder.addDisallowedApplication("com.xhttp.tunnel")
             
-            log("[3/4] Encaminhamento...")
-            updateNotification("XHTTP VPN", "Ativo!")
+            vpnInterface = builder.establish() ?: throw Exception("VPN null")
+            log("✅ VPN criada (app excluído!)")
+            
+            log("[3/4] Encaminhando...")
+            updateNotification("XHTTP VPN", "Tráfego fluindo!")
             
             val tlsIn = tlsSocket!!.inputStream
             val tlsOut = tlsSocket!!.outputStream
             
-            // Upload (funciona)
+            // Upload
             thread(name = "Upload") {
                 try {
-                    val vpnIn = FileInputStream(fd)
+                    val vpnIn = FileInputStream(vpnInterface!!.fileDescriptor)
                     val buffer = ByteArray(32768)
                     var len: Int
                     while (isRunning) {
                         len = vpnIn.read(buffer)
                         if (len > 0) { tlsOut.write(buffer, 0, len); tlsOut.flush() }
                     }
-                } catch (e: Exception) { if (isRunning) log("?? ${e.message}") }
+                } catch (e: Exception) {}
             }
             
-            // Download: usar ParcelFileDescriptor.AutoCloseOutputStream
-            // mas SEM fechar! Usar o objeto direto!
+            // Download
             thread(name = "Download") {
                 try {
-                    val autoOut = ParcelFileDescriptor.AutoCloseOutputStream(vpnInterface)
+                    val fdInt = ParcelFileDescriptor::class.java.getDeclaredField("mFd").apply { isAccessible = true }.getInt(vpnInterface!!)
+                    val writeFd = FileDescriptor().also {
+                        FileDescriptor::class.java.getDeclaredField("fd").apply { isAccessible = true }.setInt(it, fdInt)
+                    }
+                    val vpnOut = FileOutputStream(writeFd)
                     val buffer = ByteArray(32768)
                     var len: Int
-                    var total = 0L
                     while (isRunning) {
                         len = tlsIn.read(buffer)
-                        if (len > 0) {
-                            autoOut.write(buffer, 0, len)
-                            autoOut.flush()
-                            total += len
-                            if (total % 50000 == 0L) log("?? Download: $total bytes")
-                        }
+                        if (len > 0) { vpnOut.write(buffer, 0, len); vpnOut.flush() }
                     }
-                } catch (e: Exception) { if (isRunning) log("?? ${e.message}") }
+                } catch (e: Exception) {}
             }
             
             log("[4/4] ?? VPN COMPLETA!")
             log("?? IP: 10.8.0.2")
+            log("??️ App excluído da VPN (sem loop!)")
+            log("?? Tráfego deve fluir agora!")
             
         } catch (e: Exception) {
             log("❌ ${e.message}")
