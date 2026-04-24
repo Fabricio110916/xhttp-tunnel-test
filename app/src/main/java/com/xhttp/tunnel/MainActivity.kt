@@ -29,7 +29,7 @@ class MainActivity : AppCompatActivity() {
         logText = findViewById(R.id.terminalText)
         scrollView = findViewById(R.id.terminalScroll)
         
-        XHttpVpnService.logCallback = { msg ->
+        ProtoVpnService.logCallback = { msg ->
             handler.post {
                 logText.append("$msg\n")
                 scrollView.post { scrollView.fullScroll(android.view.View.FOCUS_DOWN) }
@@ -37,53 +37,35 @@ class MainActivity : AppCompatActivity() {
         }
         
         startButton.setOnClickListener {
-            log("?? Solicitando permissão VPN...")
             val intent = VpnService.prepare(this)
             if (intent != null) {
-                // Mostrar diálogo de permissão
                 startActivityForResult(intent, VPN_REQUEST_CODE)
             } else {
-                // Permissão já concedida
-                log("✅ Permissão já concedida!")
-                startVpnService()
+                startVpn()
             }
         }
         
         stopButton.setOnClickListener {
-            val intent = Intent(this, XHttpVpnService::class.java).apply { action = "STOP" }
-            startService(intent)
+            stopService(Intent(this, ProtoVpnService::class.java))
             startButton.isEnabled = true
             stopButton.isEnabled = false
             statusText.text = "Parado"
-            log("⏹ VPN parada pelo usuário")
         }
         
-        logText.text = "?? XHTTP VPN\n?? 168.138.147.212:443\n\n"
+        logText.text = "?? XHTTP VPN + DTProto\n?? 168.138.147.212:443\n\n"
     }
     
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == VPN_REQUEST_CODE && resultCode == Activity.RESULT_OK) {
-            log("✅ Permissão VPN concedida!")
-            startVpnService()
-        } else {
-            log("❌ Permissão VPN negada!")
+            startVpn()
         }
     }
     
-    private fun startVpnService() {
-        log("▶ Iniciando serviço VPN...")
-        val intent = Intent(this, XHttpVpnService::class.java)
-        startService(intent)
+    private fun startVpn() {
+        startService(Intent(this, ProtoVpnService::class.java))
         startButton.isEnabled = false
         stopButton.isEnabled = true
         statusText.text = "VPN Ativa"
-    }
-    
-    private fun log(msg: String) {
-        handler.post {
-            logText.append("$msg\n")
-            scrollView.post { scrollView.fullScroll(android.view.View.FOCUS_DOWN) }
-        }
     }
 }

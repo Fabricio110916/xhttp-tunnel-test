@@ -35,14 +35,14 @@ class ProtoVpnService : VpnService() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
-        log("📱 ProtoVpnService criado")
+        log("?? ProtoVpnService criado")
     }
     
     // ============================================================
     // RECOMENDAÇÃO DO README: Apenas UMA instância por sessão
     // ============================================================
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        log("📋 onStartCommand")
+        log("?? onStartCommand")
         
         // Iniciar foreground (recomendação do README)
         startForeground(NOTIFICATION_ID, buildNotification("Conectando..."))
@@ -73,7 +73,7 @@ class ProtoVpnService : VpnService() {
             log("[1/5] Criando socket TLS...")
             val socket = Socket()
             
-            // 🔥 RECOMENDAÇÃO DO README: protect() o socket!
+            // ?? RECOMENDAÇÃO DO README: protect() o socket!
             if (!protect(socket)) {
                 socket.close()
                 throw IllegalStateException("VpnService.protect falhou")
@@ -118,7 +118,7 @@ class ProtoVpnService : VpnService() {
             val vpnFd = builder.establish() 
                 ?: throw IllegalStateException("Falha ao criar TUN")
             
-            // 🔥 RECOMENDAÇÃO DO README: detachFd() para performance
+            // ?? RECOMENDAÇÃO DO README: detachFd() para performance
             val fdLong = vpnFd.detachFd().toLong()
             log("✅ TUN criada! FD: $fdLong")
             
@@ -127,9 +127,9 @@ class ProtoVpnService : VpnService() {
             updateNotification("Conectado!")
             
             // PASSO 5: Encaminhamento
-            log("[5/5] 🎉 VPN ATIVA!")
-            log("📍 IP: 10.8.0.2")
-            log("🔑 Ícone de VPN deve aparecer!")
+            log("[5/5] ?? VPN ATIVA!")
+            log("?? IP: 10.8.0.2")
+            log("?? Ícone de VPN deve aparecer!")
             
             // Encaminhamento com socket protegido
             val tlsIn = tlsSocket.inputStream
@@ -151,7 +151,7 @@ class ProtoVpnService : VpnService() {
                         }
                     }
                 } catch (e: Exception) {
-                    log("📤 Upload finalizado")
+                    log("?? Upload finalizado")
                 }
             }
             
@@ -171,7 +171,7 @@ class ProtoVpnService : VpnService() {
                         }
                     }
                 } catch (e: Exception) {
-                    log("📥 Download finalizado")
+                    log("?? Download finalizado")
                 }
             }
             
@@ -185,7 +185,7 @@ class ProtoVpnService : VpnService() {
     // RECOMENDAÇÃO DO README: finalizar com client.stop()
     // ============================================================
     override fun onDestroy() {
-        log("🛑 onDestroy - Finalizando VPN...")
+        log("?? onDestroy - Finalizando VPN...")
         stopThread?.interrupt()
         stopThread = thread(name = "dtproto-stop") {
             try {
