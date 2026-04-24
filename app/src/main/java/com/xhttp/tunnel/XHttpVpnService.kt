@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.VpnService
 import android.os.*
 import android.util.Log
+import android.system.Os
 import androidx.core.app.NotificationCompat
 import java.io.*
 import java.net.*
@@ -76,14 +77,13 @@ class XHttpVpnService : VpnService() {
             log("[3/4] Encaminhando...")
             updateNotification("XHTTP VPN", "Ativo!")
             
-            val fd = vpnInterface!!.fileDescriptor
             val tlsIn = tlsSocket!!.inputStream
             val tlsOut = tlsSocket!!.outputStream
             
-            // Upload: VPN -> TLS
+            // Upload: FileInputStream FUNCIONA
             thread(name = "Upload") {
                 try {
-                    val vpnIn = FileInputStream(fd)
+                    val vpnIn = FileInputStream(vpnInterface!!.fileDescriptor)
                     val buffer = ByteArray(32768)
                     var len: Int
                     while (isRunning) {
@@ -93,10 +93,13 @@ class XHttpVpnService : VpnService() {
                 } catch (e: Exception) { if (isRunning) log("?? ${e.message}") }
             }
             
-            // Download: TLS -> VPN
+            // Download: NÃO usar FileOutputStream! Usar dup() do FD!
             thread(name = "Download") {
                 try {
-                    val vpnOut = FileOutputStream(fd)
+                    // Duplicar o FD para ter um separado para escrita
+                    val fd = vpnInterface!!.fileDescriptor
+                    val dupFd = Os.dup(vpnInterface!!)
+                    val vpnOut = FileOutputStream(dupFd)
                     val buffer = ByteArray(32768)
                     var len: Int
                     while (isRunning) {
@@ -106,9 +109,8 @@ class XHttpVpnService : VpnService() {
                 } catch (e: Exception) { if (isRunning) log("?? ${e.message}") }
             }
             
-            log("[4/4] ?? VPN COMPLETA COM NAT!")
+            log("[4/4] ?? VPN COMPLETA!")
             log("?? IP: 10.8.0.2")
-            log("?? Pacotes IP → Servidor NAT → Internet!")
             
         } catch (e: Exception) {
             log("❌ ${e.message}")
