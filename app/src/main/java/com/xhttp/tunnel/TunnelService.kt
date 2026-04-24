@@ -34,7 +34,7 @@ class TunnelService : Service() {
     
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (!isRunning) {
-            startForeground(NOTIFICATION_ID, createNotification("Túnel ativo"))
+            startForeground(NOTIFICATION_ID, createNotification("SOCKS5 ativo"))
             Thread { startTunnel() }.start()
         }
         return START_STICKY
@@ -44,10 +44,11 @@ class TunnelService : Service() {
         isRunning = true
         
         try {
-            log("[1/3] Conectando XHTTP...")
+            log("[1/3] Conectando túnel XHTTP...")
             val ctx = SSLContext.getInstance("TLS")
             ctx.init(null, arrayOf(TrustAllCerts()), java.security.SecureRandom())
             tlsSocket = ctx.socketFactory.createSocket("168.138.147.212", 443) as SSLSocket
+            tlsSocket?.soTimeout = 0
             tlsSocket?.startHandshake()
             
             val w = OutputStreamWriter(tlsSocket!!.outputStream)
@@ -56,22 +57,25 @@ class TunnelService : Service() {
             val r = BufferedReader(InputStreamReader(tlsSocket!!.inputStream))
             var line: String?
             while (r.readLine().also { line = it } != null) { if (line!!.isEmpty()) break }
-            log("✅ XHTTP OK")
+            log("✅ Túnel XHTTP OK")
             
-            log("[2/3] Iniciando SOCKS5 local...")
+            log("[2/3] Iniciando SOCKS5...")
             proxyServer = ServerSocket(PROXY_PORT)
             log("✅ SOCKS5 em 127.0.0.1:$PROXY_PORT")
             
             updateNotification("SOCKS5 Proxy", "Porta $PROXY_PORT")
             
             log("[3/3] ?? Proxy ativo!")
-            log("?? Configure: 127.0.0.1:$PROXY_PORT")
-            log("   Tipo: SOCKS5")
+            log("?? 127.0.0.1:$PROXY_PORT")
+            log("?? Configure apps para usar este proxy")
             
-            // Aceitar conexões
             while (isRunning) {
-                val client = proxyServer?.accept() ?: break
-                Thread { handleClient(client) }.start()
+                try {
+                    val client = proxyServer?.accept() ?: break
+                    Thread { handleSocks5(client) }.start()
+                } catch (e: Exception) {
+                    if (isRunning) log("⚠️ ${e.message}")
+                }
             }
             
         } catch (e: Exception) {
@@ -80,23 +84,113 @@ class TunnelService : Service() {
         }
     }
     
-    private fun handleClient(client: Socket) {
+    private fun handleSocks5(client: Socket) {
         try {
-            val clientIn = client.getInputStream()
-            val clientOut = client.getOutputStream()
-            val tlsIn = tlsSocket!!.inputStream
-            val tlsOut = tlsSocket!!.outputStream
+            val cin = client.getInputStream()
+            val cout = client.getOutputStream()
+            val tin = tlsSocket!!.inputStream
+            val tout = tlsSocket!!.outputStream
             
-            // Handshake SOCKS5 simples (sem autenticação)
-            clientIn.skip(3)
-            clientOut.write(byteArrayOf(5, 0))
+            // ==========================================
+            // HANDSHAKE SOCKS5 CORRETO (RFC 1928)
+            // ==========================================
             
-            // Encaminhar
-            Thread { try { clientIn.copyTo(tlsOut) } catch(e: Exception) {} }.start()
-            Thread { try { tlsIn.copyTo(clientOut) } catch(e: Exception) {} }.start()
+            // 1. Ler versão e métodos
+            val ver = cin.read()
+            val nmethods = cin.read()
+            val methods = ByteArray(nmethods)
+            cin.read(methods)
+            
+            log("?? SOCKS5: ver=$ver, métodos=$nmethods")
+            
+            // 2. Responder: sem autenticação (0x00)
+            cout.write(byteArrayOf(5, 0))
+            cout.flush()
+            
+            // 3. Ler requisição
+            val reqVer = cin.read()
+            val cmd = cin.read()
+            val rsv = cin.read() // 0x00
+            val atyp = cin.read()
+            
+            // 4. Resolver endereço
+            val dstAddr: String
+            when (atyp) {
+                1 -> { // IPv4
+                    val addr = ByteArray(4)
+                    cin.read(addr)
+                    dstAddr = InetAddress.getByAddress(addr).hostAddress
+                }
+                3 -> { // Domain
+                    val len = cin.read()
+                    val domain = ByteArray(len)
+                    cin.read(domain)
+                    dstAddr = String(domain)
+                }
+                4 -> { // IPv6
+                    val addr = ByteArray(16)
+                    cin.read(addr)
+                    dstAddr = InetAddress.getByAddress(addr).hostAddress
+                }
+                else -> {
+                    log("❌ SOCKS5: ATYP desconhecido $atyp")
+                    client.close()
+                    return
+                }
+            }
+            
+            val dstPort = ((cin.read() and 0xFF) shl 8) or (cin.read() and 0xFF)
+            
+            log("?? SOCKS5: CONNECT $dstAddr:$dstPort")
+            
+            // 5. Responder sucesso
+            val response = byteArrayOf(
+                5,      // VER
+                0,      // REP (sucesso)
+                0,      // RSV
+                1,      // ATYP (IPv4)
+                0, 0, 0, 0,  // BND.ADDR (0.0.0.0)
+                0, 0    // BND.PORT (0)
+            )
+            cout.write(response)
+            cout.flush()
+            
+            // 6. Encaminhamento bidirecional
+            val t1 = Thread {
+                try {
+                    val buf = ByteArray(8192)
+                    var len: Int
+                    while (isRunning) {
+                        len = cin.read(buf)
+                        if (len <= 0) break
+                        tout.write(buf, 0, len)
+                        tout.flush()
+                    }
+                } catch (e: Exception) {}
+            }
+            
+            val t2 = Thread {
+                try {
+                    val buf = ByteArray(8192)
+                    var len: Int
+                    while (isRunning) {
+                        len = tin.read(buf)
+                        if (len <= 0) break
+                        cout.write(buf, 0, len)
+                        cout.flush()
+                    }
+                } catch (e: Exception) {}
+            }
+            
+            t1.start()
+            t2.start()
+            t1.join()
+            t2.join()
             
         } catch (e: Exception) {
-            try { client.close() } catch(e: Exception) {}
+            log("❌ SOCKS5 erro: ${e.message}")
+        } finally {
+            try { client.close() } catch (e: Exception) {}
         }
     }
     
@@ -110,13 +204,13 @@ class TunnelService : Service() {
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             getSystemService(NotificationManager::class.java).createNotificationChannel(
-                NotificationChannel(CHANNEL_ID, "XHTTP Tunnel", NotificationManager.IMPORTANCE_LOW)
+                NotificationChannel(CHANNEL_ID, "XHTTP SOCKS5", NotificationManager.IMPORTANCE_LOW)
             )
         }
     }
     
     private fun createNotification(text: String) = NotificationCompat.Builder(this, CHANNEL_ID)
-        .setContentTitle("XHTTP Proxy").setContentText(text)
+        .setContentTitle("XHTTP SOCKS5").setContentText(text)
         .setSmallIcon(android.R.drawable.ic_dialog_info).setOngoing(true).build()
     
     private fun updateNotification(title: String, content: String) {

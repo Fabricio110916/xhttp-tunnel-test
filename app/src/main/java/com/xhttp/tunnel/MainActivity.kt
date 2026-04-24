@@ -14,7 +14,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var statusText: TextView
     private lateinit var logText: TextView
     private lateinit var scrollView: ScrollView
-    
     private val handler = Handler(Looper.getMainLooper())
     
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -35,11 +34,10 @@ class MainActivity : AppCompatActivity() {
         }
         
         startButton.setOnClickListener {
-            val intent = Intent(this, TunnelService::class.java)
-            startService(intent)
+            startService(Intent(this, TunnelService::class.java))
             startButton.isEnabled = false
             stopButton.isEnabled = true
-            statusText.text = "Proxy Ativo"
+            statusText.text = "SOCKS5 Ativo"
         }
         
         stopButton.setOnClickListener {
@@ -49,6 +47,6 @@ class MainActivity : AppCompatActivity() {
             statusText.text = "Parado"
         }
         
-        logText.text = "?? XHTTP SOCKS5 Proxy\n?? 168.138.147.212:443\n\n"
+        logText.text = "?? XHTTP SOCKS5 Proxy\n?? 168.138.147.212:443\n?? 127.0.0.1:1080\n\n"
     }
 }
