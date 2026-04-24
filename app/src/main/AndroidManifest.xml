@@ -27,7 +27,7 @@
         </activity>
         
         <service
-            android:name=".ProtoVpnService"
+            android:name=".XHttpVpnService"
             android:exported="false"
             android:foregroundServiceType="specialUse"
             android:permission="android.permission.BIND_VPN_SERVICE">

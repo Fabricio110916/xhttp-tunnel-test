@@ -49,20 +49,7 @@ class XHttpVpnService : VpnService() {
             log("[1/5] TLS...")
             val ctx = SSLContext.getInstance("TLS")
             ctx.init(null, arrayOf(TrustAllCerts()), java.security.SecureRandom())
-            val factory = ctx.socketFactory
-            
-            // ?? NOVO: Criar socket protegido (recomendação DTProto)
-            val rawSocket = Socket()
-            rawSocket.connect(InetSocketAddress("168.138.147.212", 443), 10000)
-            
-            // Proteger socket (evita loop!)
-            if (!protect(rawSocket)) {
-                log("⚠️ protect() falhou, mas continuando...")
-            } else {
-                log("??️ Socket protegido!")
-            }
-            
-            tlsSocket = factory.createSocket(rawSocket, "168.138.147.212", 443, true) as SSLSocket
+            tlsSocket = ctx.socketFactory.createSocket("168.138.147.212", 443) as SSLSocket
             tlsSocket?.startHandshake()
             log("✅ TLS")
             
@@ -82,7 +69,6 @@ class XHttpVpnService : VpnService() {
                 .addRoute("168.138.147.212", 32)
                 .addRoute("8.8.8.8", 32)
                 .addRoute("0.0.0.0", 0)
-                .addDnsServer("1.1.1.1")  // DNS do DTProto
                 .addDnsServer("8.8.8.8")
                 .setMtu(1500)
             
@@ -121,7 +107,6 @@ class XHttpVpnService : VpnService() {
             
             log("[5/5] ?? VPN ATIVA!")
             log("?? IP: 10.8.0.2")
-            log("??️ Socket protegido c/ protect()")
             
         } catch (e: Exception) {
             log("❌ ${e.message}")

@@ -29,7 +29,7 @@ class MainActivity : AppCompatActivity() {
         logText = findViewById(R.id.terminalText)
         scrollView = findViewById(R.id.terminalScroll)
         
-        ProtoVpnService.logCallback = { msg ->
+        XHttpVpnService.logCallback = { msg ->
             handler.post {
                 logText.append("$msg\n")
                 scrollView.post { scrollView.fullScroll(android.view.View.FOCUS_DOWN) }
@@ -46,13 +46,13 @@ class MainActivity : AppCompatActivity() {
         }
         
         stopButton.setOnClickListener {
-            stopService(Intent(this, ProtoVpnService::class.java))
+            stopService(Intent(this, XHttpVpnService::class.java).apply { action = "STOP" })
             startButton.isEnabled = true
             stopButton.isEnabled = false
             statusText.text = "Parado"
         }
         
-        logText.text = "?? XHTTP VPN + DTProto\n?? 168.138.147.212:443\n\n"
+        logText.text = "?? XHTTP VPN\n?? 168.138.147.212:443\n\n"
     }
     
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -63,7 +63,7 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun startVpn() {
-        startService(Intent(this, ProtoVpnService::class.java))
+        startService(Intent(this, XHttpVpnService::class.java))
         startButton.isEnabled = false
         stopButton.isEnabled = true
         statusText.text = "VPN Ativa"
