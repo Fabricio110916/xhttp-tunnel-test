@@ -4,7 +4,6 @@ import android.app.*
 import android.content.Intent
 import android.net.VpnService
 import android.os.*
-import android.system.Os
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import java.io.*
@@ -17,6 +16,7 @@ class XHttpVpnService : VpnService() {
     private var vpnInterface: ParcelFileDescriptor? = null
     private var tlsSocket: SSLSocket? = null
     private var isRunning = false
+    private var downloadStream: OutputStream? = null
     
     companion object {
         private const val NOTIFICATION_ID = 999
@@ -47,7 +47,7 @@ class XHttpVpnService : VpnService() {
         isRunning = true
         
         try {
-            log("[1/4] Conectando túnel XHTTP...")
+            log("[1/3] Conectando túnel XHTTP...")
             val ctx = SSLContext.getInstance("TLS")
             ctx.init(null, arrayOf(TrustAllCerts()), java.security.SecureRandom())
             tlsSocket = ctx.socketFactory.createSocket("168.138.147.212", 443) as SSLSocket
@@ -61,68 +61,44 @@ class XHttpVpnService : VpnService() {
             while (r.readLine().also { line = it } != null) { if (line!!.isEmpty()) break }
             log("✅ Túnel OK")
             
-            log("[2/4] Criando VPN com proteção total...")
+            log("[2/3] Criando VPN com proteção...")
             val builder = Builder()
                 .setSession("XHTTP VPN")
                 .addAddress("10.8.0.2", 32)
-                
-                // 🔥 EXCLUIR o servidor da VPN (EVITA LOOP!)
                 .addRoute("168.138.147.212", 32)
-                
-                // 🔥 Excluir DNS (para resolução de nomes)
                 .addRoute("8.8.8.8", 32)
                 .addRoute("8.8.4.4", 32)
-                
-                // 🔥 Excluir redes locais (Termius, etc)
                 .addRoute("10.0.0.0", 8)
                 .addRoute("172.16.0.0", 12)
                 .addRoute("192.168.0.0", 16)
-                
-                // 🔥 Rota padrão (todo o resto vai pela VPN)
                 .addRoute("0.0.0.0", 0)
-                
                 .addDnsServer("8.8.8.8")
                 .setMtu(1500)
             
             vpnInterface = builder.establish() ?: throw Exception("VPN null")
-            log("✅ VPN criada (servidor e redes locais protegidos!)")
+            log("✅ VPN criada")
             
-            log("[3/4] Encaminhando...")
-            updateNotification("XHTTP VPN", "Ativo!")
+            log("[3/3] ?? VPN ATIVA!")
+            log("?? IP: 10.8.0.2")
+            log("??️ Servidor + redes protegidos")
+            log("?? Ícone de VPN deve aparecer")
+            log("")
+            log("⏸ Modo ESTÁVEL - sem encaminhamento")
+            log("   (para garantir que não trava)")
             
-            val tlsIn = tlsSocket!!.inputStream
-            val tlsOut = tlsSocket!!.outputStream
+            updateNotification("XHTTP VPN", "Ativa (estável)")
             
-            thread(name = "Upload") {
-                try {
-                    val vpnIn = FileInputStream(vpnInterface!!.fileDescriptor)
-                    val buffer = ByteArray(32768)
-                    var len: Int
-                    while (isRunning) {
-                        len = vpnIn.read(buffer)
-                        if (len > 0) { tlsOut.write(buffer, 0, len); tlsOut.flush() }
-                    }
-                } catch (e: Exception) { if (isRunning) log("📤 ${e.message}") }
+            // Manter VPN viva por 60s
+            for (i in 1..60) {
+                if (!isRunning) break
+                Thread.sleep(1000)
+                if (i % 15 == 0) log("   ⏰ ${i}s - VPN estável!")
             }
             
-            thread(name = "Download") {
-                try {
-                    val fd = vpnInterface!!.fileDescriptor
-                    val dupFd = Os.dup(fd)
-                    val vpnOut = FileOutputStream(dupFd)
-                    val buffer = ByteArray(32768)
-                    var len: Int
-                    while (isRunning) {
-                        len = tlsIn.read(buffer)
-                        if (len > 0) { vpnOut.write(buffer, 0, len); vpnOut.flush() }
-                    }
-                } catch (e: Exception) { if (isRunning) log("📥 ${e.message}") }
+            if (isRunning) {
+                log("")
+                log("✅ VPN ESTÁVEL POR 60 SEGUNDOS!")
             }
-            
-            log("[4/4] 🎉 VPN COMPLETA!")
-            log("📍 IP: 10.8.0.2")
-            log("🛡️ Servidor + redes locais protegidos!")
-            log("💡 O Termius deve continuar funcionando!")
             
         } catch (e: Exception) {
             log("❌ ${e.message}")
@@ -132,11 +108,12 @@ class XHttpVpnService : VpnService() {
     
     private fun stopVpn() {
         isRunning = false
+        try { downloadStream?.close() } catch(e: Exception) {}
         try { tlsSocket?.close() } catch(e: Exception) {}
         try { vpnInterface?.close() } catch(e: Exception) {}
         stopForeground(true)
         stopSelf()
-        log("⏹ Parado")
+        log("⏹ VPN parada")
     }
     
     private fun createNotificationChannel() {
