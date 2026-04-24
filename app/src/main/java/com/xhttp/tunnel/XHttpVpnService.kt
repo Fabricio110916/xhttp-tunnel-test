@@ -4,8 +4,8 @@ import android.app.*
 import android.content.Intent
 import android.net.VpnService
 import android.os.*
-import android.util.Log
 import android.system.Os
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import java.io.*
 import java.net.*
@@ -93,12 +93,11 @@ class XHttpVpnService : VpnService() {
                 } catch (e: Exception) { if (isRunning) log("?? ${e.message}") }
             }
             
-            // Download: NÃO usar FileOutputStream! Usar dup() do FD!
+            // Download: Usar FileDescriptor do ParcelFileDescriptor
             thread(name = "Download") {
                 try {
-                    // Duplicar o FD para ter um separado para escrita
                     val fd = vpnInterface!!.fileDescriptor
-                    val dupFd = Os.dup(vpnInterface!!)
+                    val dupFd = Os.dup(fd)
                     val vpnOut = FileOutputStream(dupFd)
                     val buffer = ByteArray(32768)
                     var len: Int
