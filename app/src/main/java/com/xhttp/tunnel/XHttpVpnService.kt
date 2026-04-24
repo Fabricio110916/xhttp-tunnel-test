@@ -73,38 +73,38 @@ class XHttpVpnService : VpnService() {
             vpnInterface = builder.establish() ?: throw Exception("VPN null")
             log("✅ VPN criada")
             
-            log("[3/4] Testando DOWNLOAD (TLS → VPN)...")
-            updateNotification("XHTTP VPN", "Testando download...")
+            log("[3/4] Testando UPLOAD (VPN → TLS)...")
+            updateNotification("XHTTP VPN", "Testando upload...")
             
-            val tlsIn = tlsSocket!!.inputStream
+            val tlsOut = tlsSocket!!.outputStream
             
-            // APENAS DOWNLOAD: TLS -> VPN
-            thread(name = "Download") {
+            // APENAS UPLOAD: VPN -> TLS
+            thread(name = "Upload") {
                 try {
-                    val vpnOut = FileOutputStream(vpnInterface!!.fileDescriptor)
+                    val vpnIn = FileInputStream(vpnInterface!!.fileDescriptor)
                     val buffer = ByteArray(32768)
                     var len: Int
                     var total = 0L
                     while (isRunning) {
-                        len = tlsIn.read(buffer)
+                        len = vpnIn.read(buffer)
                         if (len > 0) {
-                            vpnOut.write(buffer, 0, len)
-                            vpnOut.flush()
+                            tlsOut.write(buffer, 0, len)
+                            tlsOut.flush()
                             total += len
                             if (total >= 100000) {
-                                log("?? Download: $total bytes")
+                                log("?? Upload: $total bytes")
                                 total = 0
                             }
                         }
                     }
                 } catch (e: Exception) {
-                    if (isRunning) log("?? Download: ${e.message}")
+                    if (isRunning) log("?? Upload: ${e.message}")
                 }
             }
             
-            log("[4/4] ?? VPN com DOWNLOAD ativo!")
+            log("[4/4] ?? VPN com UPLOAD ativo!")
             log("?? IP: 10.8.0.2")
-            log("?? Apenas download (TLS→VPN)")
+            log("?? Apenas upload (VPN→TLS)")
             
         } catch (e: Exception) {
             log("❌ ${e.message}")
