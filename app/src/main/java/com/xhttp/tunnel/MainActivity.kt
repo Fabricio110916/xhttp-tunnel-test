@@ -49,8 +49,6 @@ class MainActivity : AppCompatActivity() {
             statusText.text = "Parado"
         }
         
-        log("?? XHTTP SOCKS5 Proxy")
-        log("?? 168.138.147.212:443")
-        log("")
+        logText.text = "?? XHTTP SOCKS5 Proxy\n?? 168.138.147.212:443\n\n"
     }
 }
