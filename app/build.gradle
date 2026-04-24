@@ -8,24 +8,20 @@ android {
     compileSdk 34
     defaultConfig {
         applicationId "com.xhttp.tunnel"
-        minSdk 23
+        minSdk 21
         targetSdk 34
-        versionCode 200
-        versionName "200.0"
+        versionCode 100
+        versionName "100.0"
     }
-    buildTypes {
-        release { minifyEnabled false }
-    }
+    buildTypes { release { minifyEnabled false } }
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
     }
-    kotlinOptions { jvmTarget = '17' }
+    kotlinOptions { jvmTarget = '11' }
 }
 
 dependencies {
     implementation 'androidx.core:core-ktx:1.10.0'
     implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation 'com.google.android.material:material:1.9.0'
-    implementation(files("libs/dtunnel.aar"))
 }
