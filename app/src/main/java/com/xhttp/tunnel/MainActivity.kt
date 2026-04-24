@@ -37,19 +37,25 @@ class MainActivity : AppCompatActivity() {
         }
         
         startButton.setOnClickListener {
+            log("?? Solicitando permissão VPN...")
             val intent = VpnService.prepare(this)
             if (intent != null) {
+                // Mostrar diálogo de permissão
                 startActivityForResult(intent, VPN_REQUEST_CODE)
             } else {
-                startVpn()
+                // Permissão já concedida
+                log("✅ Permissão já concedida!")
+                startVpnService()
             }
         }
         
         stopButton.setOnClickListener {
-            stopService(Intent(this, XHttpVpnService::class.java).apply { action = "STOP" })
+            val intent = Intent(this, XHttpVpnService::class.java).apply { action = "STOP" }
+            startService(intent)
             startButton.isEnabled = true
             stopButton.isEnabled = false
             statusText.text = "Parado"
+            log("⏹ VPN parada pelo usuário")
         }
         
         logText.text = "?? XHTTP VPN\n?? 168.138.147.212:443\n\n"
@@ -58,14 +64,26 @@ class MainActivity : AppCompatActivity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == VPN_REQUEST_CODE && resultCode == Activity.RESULT_OK) {
-            startVpn()
+            log("✅ Permissão VPN concedida!")
+            startVpnService()
+        } else {
+            log("❌ Permissão VPN negada!")
         }
     }
     
-    private fun startVpn() {
-        startService(Intent(this, XHttpVpnService::class.java))
+    private fun startVpnService() {
+        log("▶ Iniciando serviço VPN...")
+        val intent = Intent(this, XHttpVpnService::class.java)
+        startService(intent)
         startButton.isEnabled = false
         stopButton.isEnabled = true
         statusText.text = "VPN Ativa"
+    }
+    
+    private fun log(msg: String) {
+        handler.post {
+            logText.append("$msg\n")
+            scrollView.post { scrollView.fullScroll(android.view.View.FOCUS_DOWN) }
+        }
     }
 }
