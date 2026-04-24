@@ -46,22 +46,23 @@ class XHttpVpnService : VpnService() {
         isRunning = true
         
         try {
-            log("[1/4] Conectando túnel XHTTP...")
+            log("[1/5] Conectando TLS...")
             val ctx = SSLContext.getInstance("TLS")
             ctx.init(null, arrayOf(TrustAllCerts()), java.security.SecureRandom())
             tlsSocket = ctx.socketFactory.createSocket("168.138.147.212", 443) as SSLSocket
-            tlsSocket?.tcpNoDelay = true
             tlsSocket?.startHandshake()
+            log("✅ TLS")
             
+            log("[2/5] Enviando POST...")
             val w = OutputStreamWriter(tlsSocket!!.outputStream)
             w.write("POST /ssh HTTP/1.1\r\nHost: oracle.koom.pp.ua\r\nContent-Length: 0\r\n\r\n")
             w.flush()
             val r = BufferedReader(InputStreamReader(tlsSocket!!.inputStream))
             var line: String?
             while (r.readLine().also { line = it } != null) { if (line!!.isEmpty()) break }
-            log("✅ Túnel OK")
+            log("✅ POST")
             
-            log("[2/4] Criando VPN...")
+            log("[3/5] Criando interface TUN...")
             val builder = Builder()
                 .setSession("XHTTP VPN")
                 .addAddress("10.8.0.2", 32)
@@ -72,55 +73,19 @@ class XHttpVpnService : VpnService() {
                 .setMtu(1500)
             
             vpnInterface = builder.establish() ?: throw Exception("VPN null")
-            log("✅ VPN criada!")
+            log("✅ TUN criada!")
             
-            log("[3/4] Iniciando encaminhamento...")
-            updateNotification("XHTTP VPN", "Conectado!")
-            
-            // Usar AutoCloseOutputStream (compatível com Android 14+)
-            val vpnOutput = ParcelFileDescriptor.AutoCloseOutputStream(vpnInterface!!)
-            val vpnInput = ParcelFileDescriptor.AutoCloseInputStream(vpnInterface!!)
-            val tlsOut = tlsSocket!!.outputStream
-            val tlsIn = tlsSocket!!.inputStream
-            
-            // Upload: VPN -> TLS
-            thread {
-                try {
-                    val buffer = ByteArray(32768)
-                    var len: Int
-                    while (isRunning) {
-                        len = vpnInput.read(buffer)
-                        if (len > 0) {
-                            tlsOut.write(buffer, 0, len)
-                            tlsOut.flush()
-                        }
-                    }
-                } catch (e: Exception) {
-                    if (isRunning) log("?? Upload: ${e.message}")
-                }
-            }
-            
-            // Download: TLS -> VPN
-            thread {
-                try {
-                    val buffer = ByteArray(32768)
-                    var len: Int
-                    while (isRunning) {
-                        len = tlsIn.read(buffer)
-                        if (len > 0) {
-                            vpnOutput.write(buffer, 0, len)
-                            vpnOutput.flush()
-                        }
-                    }
-                } catch (e: Exception) {
-                    if (isRunning) log("?? Download: ${e.message}")
-                }
-            }
-            
-            log("[4/4] ?? VPN ATIVA COM ENCAMINHAMENTO!")
+            log("[4/5] VPN estabelecida!")
+            log("[5/5] ?? VPN ATIVA!")
             log("?? IP: 10.8.0.2")
-            log("?? Dados fluindo pelo túnel XHTTP!")
-            log("??️ Servidor protegido contra loop!")
+            log("??️ Servidor protegido!")
+            
+            updateNotification("XHTTP VPN", "Ativa!")
+            
+            // MANTER VPN VIVA (sem encaminhar, sem fechar FD)
+            while (isRunning) {
+                Thread.sleep(1000)
+            }
             
         } catch (e: Exception) {
             log("❌ ${e.message}")
