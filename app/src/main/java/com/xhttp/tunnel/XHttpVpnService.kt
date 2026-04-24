@@ -46,10 +46,15 @@ class XHttpVpnService : VpnService() {
         isRunning = true
         
         try {
-            log("[1/5] TLS...")
+            log("[1/5] Criando socket TLS (protegido)...")
+            
+            // ?? CRIAR SOCKET PRIMEIRO (ANTES da VPN!)
+            val rawSocket = Socket()
+            rawSocket.connect(InetSocketAddress("168.138.147.212", 443), 10000)
+            
             val ctx = SSLContext.getInstance("TLS")
             ctx.init(null, arrayOf(TrustAllCerts()), java.security.SecureRandom())
-            tlsSocket = ctx.socketFactory.createSocket("168.138.147.212", 443) as SSLSocket
+            tlsSocket = ctx.socketFactory.createSocket(rawSocket, "168.138.147.212", 443, true) as SSLSocket
             tlsSocket?.startHandshake()
             log("✅ TLS")
             
@@ -62,22 +67,20 @@ class XHttpVpnService : VpnService() {
             while (r.readLine().also { line = it } != null) { if (line!!.isEmpty()) break }
             log("✅ POST")
             
-            log("[3/5] VPN...")
+            // ?? PROTEGER O SOCKET AGORA (antes da VPN!)
+            if (!protect(tlsSocket)) {
+                log("⚠️ protect() falhou!")
+            } else {
+                log("??️ Socket TLS protegido!")
+            }
+            
+            log("[3/5] Criando VPN...")
             val builder = Builder()
                 .setSession("XHTTP VPN")
                 .addAddress("10.8.0.2", 32)
-                
-                // Excluir servidor e DNS da VPN
-                .addRoute("168.138.147.212", 32)
-                .addRoute("10.8.0.1", 32)       // DNS do servidor
-                .addRoute("8.8.8.8", 32)
-                .addRoute("8.8.4.4", 32)
                 .addRoute("0.0.0.0", 0)
-                
-                // DNS primário: servidor (10.8.0.1)
                 .addDnsServer("10.8.0.1")
                 .addDnsServer("8.8.8.8")
-                .addDnsServer("8.8.4.4")
                 .setMtu(1500)
             
             builder.addDisallowedApplication("com.xhttp.tunnel")
@@ -105,11 +108,7 @@ class XHttpVpnService : VpnService() {
             
             thread(name = "Download") {
                 try {
-                    val fdInt = ParcelFileDescriptor::class.java.getDeclaredField("mFd").apply { isAccessible = true }.getInt(vpnInterface!!)
-                    val writeFd = FileDescriptor().also {
-                        FileDescriptor::class.java.getDeclaredField("fd").apply { isAccessible = true }.setInt(it, fdInt)
-                    }
-                    val vpnOut = FileOutputStream(writeFd)
+                    val vpnOut = FileOutputStream(vpnInterface!!.fileDescriptor)
                     val buffer = ByteArray(32768)
                     var len: Int
                     while (isRunning) {
@@ -121,7 +120,8 @@ class XHttpVpnService : VpnService() {
             
             log("[5/5] ?? VPN ATIVA!")
             log("?? IP: 10.8.0.2")
-            log("?? DNS: 10.8.0.1 (servidor)")
+            log("??️ Socket protegido com protect()")
+            log("?? DNS: 10.8.0.1")
             
         } catch (e: Exception) {
             log("❌ ${e.message}")
