@@ -71,36 +71,44 @@ class XHttpVpnService : VpnService() {
                 .setMtu(1500)
             
             vpnInterface = builder.establish() ?: throw Exception("VPN null")
-            val fd = vpnInterface!!.fileDescriptor
             log("✅ VPN criada")
             
-            log("[3/4] Testando DOWNLOAD com fd...")
-            updateNotification("XHTTP VPN", "Testando download...")
+            log("[3/4] Encaminhando...")
+            updateNotification("XHTTP VPN", "Ativo!")
             
+            val fd = vpnInterface!!.fileDescriptor
             val tlsIn = tlsSocket!!.inputStream
+            val tlsOut = tlsSocket!!.outputStream
             
-            // Download usando o fd DIRETO (sem FileOutputStream)
+            // Upload: VPN -> TLS
+            thread(name = "Upload") {
+                try {
+                    val vpnIn = FileInputStream(fd)
+                    val buffer = ByteArray(32768)
+                    var len: Int
+                    while (isRunning) {
+                        len = vpnIn.read(buffer)
+                        if (len > 0) { tlsOut.write(buffer, 0, len); tlsOut.flush() }
+                    }
+                } catch (e: Exception) { if (isRunning) log("?? ${e.message}") }
+            }
+            
+            // Download: TLS -> VPN
             thread(name = "Download") {
                 try {
+                    val vpnOut = FileOutputStream(fd)
                     val buffer = ByteArray(32768)
                     var len: Int
                     while (isRunning) {
                         len = tlsIn.read(buffer)
-                        if (len > 0) {
-                            // Escrever usando FileOutputStream
-                            val out = FileOutputStream(fd)
-                            out.write(buffer, 0, len)
-                            out.flush()
-                            out.close()
-                        }
+                        if (len > 0) { vpnOut.write(buffer, 0, len); vpnOut.flush() }
                     }
-                } catch (e: Exception) {
-                    if (isRunning) log("?? ${e.message}")
-                }
+                } catch (e: Exception) { if (isRunning) log("?? ${e.message}") }
             }
             
-            log("[4/4] ?? VPN com DOWNLOAD!")
+            log("[4/4] ?? VPN COMPLETA COM NAT!")
             log("?? IP: 10.8.0.2")
+            log("?? Pacotes IP → Servidor NAT → Internet!")
             
         } catch (e: Exception) {
             log("❌ ${e.message}")
