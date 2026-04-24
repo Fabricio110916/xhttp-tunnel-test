@@ -1,20 +1,40 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.BIND_VPN_SERVICE" />
     
     <application
         android:allowBackup="true"
         android:icon="@drawable/ic_launcher"
-        android:label="XHTTP SOCKS5"
-        android:theme="@style/Theme.AppCompat.Light.DarkActionBar">
-        <activity android:name=".MainActivity" android:exported="true">
+        android:label="XHTTP VPN"
+        android:theme="@style/Theme.AppCompat.Light.DarkActionBar"
+        android:usesCleartextTraffic="true"
+        tools:ignore="MissingApplicationIcon">
+        
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <service android:name=".TunnelService" android:exported="false" android:foregroundServiceType="dataSync" />
+        
+        <service
+            android:name=".XHttpVpnService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse"
+            android:permission="android.permission.BIND_VPN_SERVICE">
+            <intent-filter>
+                <action android:name="android.net.VpnService" />
+            </intent-filter>
+        </service>
+        
     </application>
 </manifest>
