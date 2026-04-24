@@ -46,7 +46,7 @@ class XHttpVpnService : VpnService() {
         isRunning = true
         
         try {
-            log("[1/3] Conectando...")
+            log("[1/4] Conectando túnel...")
             val ctx = SSLContext.getInstance("TLS")
             ctx.init(null, arrayOf(TrustAllCerts()), java.security.SecureRandom())
             tlsSocket = ctx.socketFactory.createSocket("168.138.147.212", 443) as SSLSocket
@@ -58,9 +58,9 @@ class XHttpVpnService : VpnService() {
             val r = BufferedReader(InputStreamReader(tlsSocket!!.inputStream))
             var line: String?
             while (r.readLine().also { line = it } != null) { if (line!!.isEmpty()) break }
-            log("✅ Conectado")
+            log("✅ Túnel OK")
             
-            log("[2/3] Criando VPN...")
+            log("[2/4] Criando VPN...")
             val builder = Builder()
                 .setSession("XHTTP VPN")
                 .addAddress("10.8.0.2", 32)
@@ -73,29 +73,38 @@ class XHttpVpnService : VpnService() {
             vpnInterface = builder.establish() ?: throw Exception("VPN null")
             log("✅ VPN criada")
             
-            log("[3/3] ?? VPN ATIVA!")
+            log("[3/4] Testando DOWNLOAD (TLS → VPN)...")
+            updateNotification("XHTTP VPN", "Testando download...")
+            
+            val tlsIn = tlsSocket!!.inputStream
+            
+            // APENAS DOWNLOAD: TLS -> VPN
+            thread(name = "Download") {
+                try {
+                    val vpnOut = FileOutputStream(vpnInterface!!.fileDescriptor)
+                    val buffer = ByteArray(32768)
+                    var len: Int
+                    var total = 0L
+                    while (isRunning) {
+                        len = tlsIn.read(buffer)
+                        if (len > 0) {
+                            vpnOut.write(buffer, 0, len)
+                            vpnOut.flush()
+                            total += len
+                            if (total >= 100000) {
+                                log("?? Download: $total bytes")
+                                total = 0
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    if (isRunning) log("?? Download: ${e.message}")
+                }
+            }
+            
+            log("[4/4] ?? VPN com DOWNLOAD ativo!")
             log("?? IP: 10.8.0.2")
-            log("??️ Servidor protegido")
-            log("")
-            log("?? A VPN está ativa e o ícone ?? deve aparecer!")
-            log("⏸ Aguardando 60s para teste de estabilidade...")
-            
-            updateNotification("XHTTP VPN", "Ativa!")
-            
-            // MANTER VPN VIVA por 60 segundos
-            for (i in 1..60) {
-                if (!isRunning) break
-                Thread.sleep(1000)
-                if (i % 15 == 0) log("   ⏰ ${i}s - VPN estável!")
-            }
-            
-            if (isRunning) {
-                log("")
-                log("════════════════════════════════")
-                log("✅ VPN ESTÁVEL POR 60 SEGUNDOS!")
-                log("════════════════════════════════")
-                log("?? O ícone ?? permaneceu na barra?")
-            }
+            log("?? Apenas download (TLS→VPN)")
             
         } catch (e: Exception) {
             log("❌ ${e.message}")
