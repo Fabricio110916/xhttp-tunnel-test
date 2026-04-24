@@ -9,11 +9,21 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import kotlin.concurrent.thread
 
+// ?? IMPORTAR AS CLASSES DO AAR!
+import libDTProto.DTProtoClientConfig
+import libDTProto.DTProtoClient
+import libDTProto.LibDTProto
+import libDTProto.TunBuilder
+import libDTProto.SocketOpener
+import libDTProto.SocketProtector
+import libDTProto.StatusListener
+import libDTProto.LogHandler
+
 class ProtoVpnService : VpnService() {
     
     private var startThread: Thread? = null
     private var stopThread: Thread? = null
-    private var client: libDTProto.DTProtoClient? = null
+    private var client: DTProtoClient? = null
     
     companion object {
         private const val TAG = "ProtoVpnService"
@@ -43,33 +53,31 @@ class ProtoVpnService : VpnService() {
             try {
                 log("⏳ Configurando DTProto...")
                 
-                // Configuração com CAMPOS REAIS do AAR
-                val cfg = libDTProto.DTProtoClientConfig().apply {
-                    // XHTTP
-                    setXHTTPHost("oracle.koom.pp.ua")       // Host de conexão
-                    setPort("443")                            // Porta
-                    setXHTTPTLS(true)                         // TLS ativado
-                    setXHTTPServerName("oracle.koom.pp.ua")  // SNI
-                    setXHTTPInsecure(true)                    // Ignorar cert inválido
-                    setXHTTPUploadBufferSize(32768L)          // Buffer 32KB
-                    
-                    // Autenticação (vazia = sem auth)
-                    setUsername("")
-                    setPassword("")
-                    
-                    // Timeouts
-                    setKeepAliveInterval(120L)
-                    setKeepAliveMaxRetry(5L)
-                    setReconnectDelay(3L)
-                    setTimeout(30L)
-                }
+                val cfg = DTProtoClientConfig()
                 
-                log("⚙️ XHTTP Host: ${cfg.getXHTTPHost()}")
-                log("   Porta: ${cfg.getPort()} | TLS: ${cfg.getXHTTPTLS()}")
-                log("   SNI: ${cfg.getXHTTPServerName()}")
+                // Configuração XHTTP
+                cfg.setXHTTPHost("oracle.koom.pp.ua")
+                cfg.setPort("443")
+                cfg.setXHTTPTLS(true)
+                cfg.setXHTTPServerName("oracle.koom.pp.ua")
+                cfg.setXHTTPInsecure(true)
+                cfg.setXHTTPUploadBufferSize(32768L)
+                
+                // Sem autenticação
+                cfg.setUsername("")
+                cfg.setPassword("")
+                
+                // Timeouts
+                cfg.setKeepAliveInterval(120L)
+                cfg.setKeepAliveMaxRetry(5L)
+                cfg.setReconnectDelay(3L)
+                cfg.setTimeout(30L)
+                
+                log("⚙️ Host: ${cfg.getXHTTPHost()}:${cfg.getPort()}")
+                log("   TLS: ${cfg.getXHTTPTLS()} | SNI: ${cfg.getXHTTPServerName()}")
                 
                 // TunBuilder
-                val tunBuilder = libDTProto.TunBuilder { ip ->
+                val tunBuilder = TunBuilder { ip ->
                     val builder = Builder()
                         .setSession("DTProto")
                         .setMtu(1500)
@@ -83,19 +91,19 @@ class ProtoVpnService : VpnService() {
                 }
                 
                 // SocketOpener
-                val socketOpener = libDTProto.SocketOpener {
+                val socketOpener = SocketOpener {
                     val socket = java.net.Socket()
                     ParcelFileDescriptor.fromSocket(socket).detachFd().toLong()
                 }
                 
                 // SocketProtector
-                val socketProtector = libDTProto.SocketProtector { fd ->
-                    // Proteger o socket
-                    protect(java.net.Socket())
+                val socketProtector = SocketProtector { fd ->
+                    val socket = java.net.Socket()
+                    protect(socket)
                 }
                 
                 // Status Listener
-                val statusListener = libDTProto.StatusListener { status, error ->
+                val statusListener = StatusListener { status, error ->
                     log("?? $status")
                     updateNotification(status ?: "desconhecido")
                     
@@ -106,7 +114,7 @@ class ProtoVpnService : VpnService() {
                 }
                 
                 // Log Handler
-                val logHandler = libDTProto.LogHandler { level, _, message ->
+                val logHandler = LogHandler { level, _, message ->
                     val androidLevel = when (level.toInt()) {
                         0 -> Log.DEBUG; 1 -> Log.INFO; 2 -> Log.WARN
                         3 -> Log.ERROR; else -> Log.ASSERT
@@ -114,8 +122,8 @@ class ProtoVpnService : VpnService() {
                     Log.println(androidLevel, TAG, message ?: "")
                 }
                 
-                // Criar cliente com OS 5 PARÂMETROS CORRETOS!
-                client = libDTProto.LibDTProto.new_(
+                // Criar cliente (5 parâmetros)
+                client = LibDTProto.new_(
                     cfg,
                     tunBuilder,
                     socketOpener,
@@ -124,7 +132,7 @@ class ProtoVpnService : VpnService() {
                     logHandler
                 )
                 
-                log("▶ Iniciando DTProto Client...")
+                log("▶ Iniciando cliente...")
                 client?.start()
                 
             } catch (e: Exception) {
