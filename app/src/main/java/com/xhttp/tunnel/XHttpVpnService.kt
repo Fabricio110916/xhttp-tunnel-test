@@ -64,20 +64,26 @@ class XHttpVpnService : VpnService() {
             val builder = Builder()
                 .setSession("XHTTP VPN")
                 .addAddress("10.8.0.2", 32)
+                
+                // ?? PRIMEIRO: Excluir servidor, DNS, redes locais
                 .addRoute("168.138.147.212", 32)
                 .addRoute("8.8.8.8", 32)
                 .addRoute("8.8.4.4", 32)
+                .addRoute("10.0.0.0", 8)
+                .addRoute("172.16.0.0", 12)
+                .addRoute("192.168.0.0", 16)
+                
+                // ?? POR ÚLTIMO: Rota padrão (todo o resto)
                 .addRoute("0.0.0.0", 0)
+                
                 .addDnsServer("8.8.8.8")
-                .addDnsServer("8.8.4.4")
                 .setMtu(1500)
             
-            // ?? EXCLUIR O PRÓPRIO APP DA VPN!
-            // Isso evita que o tráfego do túnel TLS passe pela VPN
+            // Excluir o próprio app
             builder.addDisallowedApplication("com.xhttp.tunnel")
             
             vpnInterface = builder.establish() ?: throw Exception("VPN null")
-            log("✅ VPN criada (app excluído!)")
+            log("✅ VPN criada")
             
             log("[3/4] Encaminhando...")
             updateNotification("XHTTP VPN", "Tráfego fluindo!")
@@ -85,7 +91,6 @@ class XHttpVpnService : VpnService() {
             val tlsIn = tlsSocket!!.inputStream
             val tlsOut = tlsSocket!!.outputStream
             
-            // Upload
             thread(name = "Upload") {
                 try {
                     val vpnIn = FileInputStream(vpnInterface!!.fileDescriptor)
@@ -98,7 +103,6 @@ class XHttpVpnService : VpnService() {
                 } catch (e: Exception) {}
             }
             
-            // Download
             thread(name = "Download") {
                 try {
                     val fdInt = ParcelFileDescriptor::class.java.getDeclaredField("mFd").apply { isAccessible = true }.getInt(vpnInterface!!)
@@ -117,8 +121,8 @@ class XHttpVpnService : VpnService() {
             
             log("[4/4] ?? VPN COMPLETA!")
             log("?? IP: 10.8.0.2")
-            log("??️ App excluído da VPN (sem loop!)")
-            log("?? Tráfego deve fluir agora!")
+            log("?? Tráfego de internet roteado!")
+            log("??️ Servidor/DNS/LAN excluídos!")
             
         } catch (e: Exception) {
             log("❌ ${e.message}")
