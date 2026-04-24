@@ -46,9 +46,7 @@ class XHttpVpnService : VpnService() {
         isRunning = true
         
         try {
-            log("[1/5] Criando socket TLS (protegido)...")
-            
-            // ?? CRIAR SOCKET PRIMEIRO (ANTES da VPN!)
+            log("[1/4] TLS...")
             val rawSocket = Socket()
             rawSocket.connect(InetSocketAddress("168.138.147.212", 443), 10000)
             
@@ -56,31 +54,25 @@ class XHttpVpnService : VpnService() {
             ctx.init(null, arrayOf(TrustAllCerts()), java.security.SecureRandom())
             tlsSocket = ctx.socketFactory.createSocket(rawSocket, "168.138.147.212", 443, true) as SSLSocket
             tlsSocket?.startHandshake()
-            log("✅ TLS")
             
-            log("[2/5] POST...")
             val w = OutputStreamWriter(tlsSocket!!.outputStream)
             w.write("POST /ssh HTTP/1.1\r\nHost: oracle.koom.pp.ua\r\nContent-Length: 0\r\n\r\n")
             w.flush()
             val r = BufferedReader(InputStreamReader(tlsSocket!!.inputStream))
             var line: String?
             while (r.readLine().also { line = it } != null) { if (line!!.isEmpty()) break }
-            log("✅ POST")
             
-            // ?? PROTEGER O SOCKET AGORA (antes da VPN!)
-            if (!protect(tlsSocket)) {
-                log("⚠️ protect() falhou!")
-            } else {
-                log("??️ Socket TLS protegido!")
-            }
+            protect(tlsSocket)
+            log("✅ TLS + protect()")
             
-            log("[3/5] Criando VPN...")
+            log("[2/4] VPN...")
             val builder = Builder()
                 .setSession("XHTTP VPN")
                 .addAddress("10.8.0.2", 32)
                 .addRoute("0.0.0.0", 0)
-                .addDnsServer("10.8.0.1")
+                // ?? DNS PÚBLICO DIRETO (sem passar pela VPN!)
                 .addDnsServer("8.8.8.8")
+                .addDnsServer("8.8.4.4")
                 .setMtu(1500)
             
             builder.addDisallowedApplication("com.xhttp.tunnel")
@@ -88,7 +80,7 @@ class XHttpVpnService : VpnService() {
             vpnInterface = builder.establish() ?: throw Exception("VPN null")
             log("✅ VPN criada")
             
-            log("[4/5] Encaminhando...")
+            log("[3/4] Encaminhando...")
             updateNotification("XHTTP VPN", "Ativo!")
             
             val tlsIn = tlsSocket!!.inputStream
@@ -99,10 +91,7 @@ class XHttpVpnService : VpnService() {
                     val vpnIn = FileInputStream(vpnInterface!!.fileDescriptor)
                     val buffer = ByteArray(32768)
                     var len: Int
-                    while (isRunning) {
-                        len = vpnIn.read(buffer)
-                        if (len > 0) { tlsOut.write(buffer, 0, len); tlsOut.flush() }
-                    }
+                    while (isRunning) { len = vpnIn.read(buffer); if (len > 0) { tlsOut.write(buffer, 0, len); tlsOut.flush() } }
                 } catch (e: Exception) {}
             }
             
@@ -111,17 +100,13 @@ class XHttpVpnService : VpnService() {
                     val vpnOut = FileOutputStream(vpnInterface!!.fileDescriptor)
                     val buffer = ByteArray(32768)
                     var len: Int
-                    while (isRunning) {
-                        len = tlsIn.read(buffer)
-                        if (len > 0) { vpnOut.write(buffer, 0, len); vpnOut.flush() }
-                    }
+                    while (isRunning) { len = tlsIn.read(buffer); if (len > 0) { vpnOut.write(buffer, 0, len); vpnOut.flush() } }
                 } catch (e: Exception) {}
             }
             
-            log("[5/5] ?? VPN ATIVA!")
+            log("[4/4] ?? VPN ATIVA!")
             log("?? IP: 10.8.0.2")
-            log("??️ Socket protegido com protect()")
-            log("?? DNS: 10.8.0.1")
+            log("?? DNS: 8.8.8.8 (público direto)")
             
         } catch (e: Exception) {
             log("❌ ${e.message}")
