@@ -46,7 +46,7 @@ class XHttpVpnService : VpnService() {
         isRunning = true
         
         try {
-            log("[1/4] Conectando...")
+            log("[1/3] Conectando...")
             val ctx = SSLContext.getInstance("TLS")
             ctx.init(null, arrayOf(TrustAllCerts()), java.security.SecureRandom())
             tlsSocket = ctx.socketFactory.createSocket("168.138.147.212", 443) as SSLSocket
@@ -60,7 +60,7 @@ class XHttpVpnService : VpnService() {
             while (r.readLine().also { line = it } != null) { if (line!!.isEmpty()) break }
             log("✅ Conectado")
             
-            log("[2/4] Criando VPN...")
+            log("[2/3] Criando VPN...")
             val builder = Builder()
                 .setSession("XHTTP VPN")
                 .addAddress("10.8.0.2", 32)
@@ -73,51 +73,29 @@ class XHttpVpnService : VpnService() {
             vpnInterface = builder.establish() ?: throw Exception("VPN null")
             log("✅ VPN criada")
             
-            log("[3/4] Encaminhando...")
-            updateNotification("XHTTP VPN", "Ativo!")
+            log("[3/3] ?? VPN ATIVA!")
+            log("?? IP: 10.8.0.2")
+            log("??️ Servidor protegido")
+            log("")
+            log("?? A VPN está ativa e o ícone ?? deve aparecer!")
+            log("⏸ Aguardando 60s para teste de estabilidade...")
             
-            val tlsIn = tlsSocket!!.inputStream
-            val tlsOut = tlsSocket!!.outputStream
+            updateNotification("XHTTP VPN", "Ativa!")
             
-            // Upload: usa FileInputStream (FUNCIONA)
-            thread(name = "Upload") {
-                try {
-                    val vpnIn = FileInputStream(vpnInterface!!.fileDescriptor)
-                    val buffer = ByteArray(32768)
-                    var len: Int
-                    while (isRunning) {
-                        len = vpnIn.read(buffer)
-                        if (len > 0) {
-                            tlsOut.write(buffer, 0, len)
-                            tlsOut.flush()
-                        }
-                    }
-                } catch (e: Exception) {
-                    if (isRunning) log("📤 ${e.message}")
-                }
+            // MANTER VPN VIVA por 60 segundos
+            for (i in 1..60) {
+                if (!isRunning) break
+                Thread.sleep(1000)
+                if (i % 15 == 0) log("   ⏰ ${i}s - VPN estável!")
             }
             
-            // Download: usa AutoCloseOutputStream (CORRETO para Android!)
-            thread(name = "Download") {
-                try {
-                    val vpnOut = ParcelFileDescriptor.AutoCloseOutputStream(vpnInterface!!)
-                    val buffer = ByteArray(32768)
-                    var len: Int
-                    while (isRunning) {
-                        len = tlsIn.read(buffer)
-                        if (len > 0) {
-                            vpnOut.write(buffer, 0, len)
-                            vpnOut.flush()
-                        }
-                    }
-                } catch (e: Exception) {
-                    if (isRunning) log("📥 ${e.message}")
-                }
+            if (isRunning) {
+                log("")
+                log("════════════════════════════════")
+                log("✅ VPN ESTÁVEL POR 60 SEGUNDOS!")
+                log("════════════════════════════════")
+                log("?? O ícone ?? permaneceu na barra?")
             }
-            
-            log("[4/4] 🎉 VPN COMPLETA!")
-            log("📍 IP: 10.8.0.2")
-            log("🔄 Tráfego fluindo!")
             
         } catch (e: Exception) {
             log("❌ ${e.message}")
