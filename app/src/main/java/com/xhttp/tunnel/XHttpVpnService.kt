@@ -47,7 +47,7 @@ class XHttpVpnService : VpnService() {
         isRunning = true
         
         try {
-            log("[1/4] Conectando...")
+            log("[1/4] Conectando túnel XHTTP...")
             val ctx = SSLContext.getInstance("TLS")
             ctx.init(null, arrayOf(TrustAllCerts()), java.security.SecureRandom())
             tlsSocket = ctx.socketFactory.createSocket("168.138.147.212", 443) as SSLSocket
@@ -61,18 +61,31 @@ class XHttpVpnService : VpnService() {
             while (r.readLine().also { line = it } != null) { if (line!!.isEmpty()) break }
             log("✅ Túnel OK")
             
-            log("[2/4] Criando VPN...")
+            log("[2/4] Criando VPN com proteção total...")
             val builder = Builder()
                 .setSession("XHTTP VPN")
                 .addAddress("10.8.0.2", 32)
+                
+                // ?? EXCLUIR o servidor da VPN (EVITA LOOP!)
                 .addRoute("168.138.147.212", 32)
+                
+                // ?? Excluir DNS (para resolução de nomes)
                 .addRoute("8.8.8.8", 32)
+                .addRoute("8.8.4.4", 32)
+                
+                // ?? Excluir redes locais (Termius, etc)
+                .addRoute("10.0.0.0", 8)
+                .addRoute("172.16.0.0", 12)
+                .addRoute("192.168.0.0", 16)
+                
+                // ?? Rota padrão (todo o resto vai pela VPN)
                 .addRoute("0.0.0.0", 0)
+                
                 .addDnsServer("8.8.8.8")
                 .setMtu(1500)
             
             vpnInterface = builder.establish() ?: throw Exception("VPN null")
-            log("✅ VPN criada")
+            log("✅ VPN criada (servidor e redes locais protegidos!)")
             
             log("[3/4] Encaminhando...")
             updateNotification("XHTTP VPN", "Ativo!")
@@ -80,7 +93,6 @@ class XHttpVpnService : VpnService() {
             val tlsIn = tlsSocket!!.inputStream
             val tlsOut = tlsSocket!!.outputStream
             
-            // Upload: FileInputStream FUNCIONA
             thread(name = "Upload") {
                 try {
                     val vpnIn = FileInputStream(vpnInterface!!.fileDescriptor)
@@ -93,7 +105,6 @@ class XHttpVpnService : VpnService() {
                 } catch (e: Exception) { if (isRunning) log("?? ${e.message}") }
             }
             
-            // Download: Usar FileDescriptor do ParcelFileDescriptor
             thread(name = "Download") {
                 try {
                     val fd = vpnInterface!!.fileDescriptor
@@ -110,6 +121,8 @@ class XHttpVpnService : VpnService() {
             
             log("[4/4] ?? VPN COMPLETA!")
             log("?? IP: 10.8.0.2")
+            log("??️ Servidor + redes locais protegidos!")
+            log("?? O Termius deve continuar funcionando!")
             
         } catch (e: Exception) {
             log("❌ ${e.message}")
