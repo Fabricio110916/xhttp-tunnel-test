@@ -7,29 +7,18 @@ import android.os.*
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import java.net.Socket
 import kotlin.concurrent.thread
 
 class ProtoVpnService : VpnService() {
     
     private var startThread: Thread? = null
     private var stopThread: Thread? = null
-    private var client: Any? = null
+    private var client: libDTProto.DTProtoClient? = null
     
     companion object {
         private const val TAG = "ProtoVpnService"
         private const val CHANNEL_ID = "dtproto_vpn"
         private const val NOTIFICATION_ID = 1001
-        
-        // Configurações do servidor XHTTP
-        private const val SERVER_HOST = "oracle.koom.pp.ua"      // Host/SNI
-        private const val SERVER_PORT = 443                       // Porta
-        private const val SERVER_SNI = "oracle.koom.pp.ua"       // SNI
-        private const val PROXY_HOST = "oracle.koom.pp.ua"       // 🔥 Proxy/Address
-        private const val USE_TLS = true                          // TLS ativado
-        private const val USERNAME = ""                           // Sem usuário
-        private const val PASSWORD = ""                           // Sem senha
-        
         var logCallback: ((String) -> Unit)? = null
     }
     
@@ -41,12 +30,9 @@ class ProtoVpnService : VpnService() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
-        log("📱 DTProto XHTTP VPN")
-        log("📍 Host: $SERVER_HOST:$SERVER_PORT")
-        log("🔐 SNI: $SERVER_SNI")
-        log("🔄 Proxy: $PROXY_HOST")
-        log("🔒 TLS: $USE_TLS")
-        log("👤 Auth: Nenhuma")
+        log("?? DTProto XHTTP VPN")
+        log("?? oracle.koom.pp.ua:443")
+        log("?? XHTTP TLS: SIM")
     }
     
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -55,78 +41,91 @@ class ProtoVpnService : VpnService() {
         startThread?.interrupt()
         startThread = thread(name = "dtproto-start") {
             try {
-                log("⏳ Iniciando DTProto Client...")
+                log("⏳ Configurando DTProto...")
                 
-                // Configuração COMPLETA do DTProto
-                val cfg = DTProtoClientConfig().apply {
-                    host = SERVER_HOST
-                    port = SERVER_PORT
-                    sni = SERVER_SNI
-                    proxyHost = PROXY_HOST    // 🔥 Campo Proxy/Address
-                    tls = USE_TLS
-                    username = USERNAME
-                    password = PASSWORD
+                // Configuração com CAMPOS REAIS do AAR
+                val cfg = libDTProto.DTProtoClientConfig().apply {
+                    // XHTTP
+                    setXHTTPHost("oracle.koom.pp.ua")       // Host de conexão
+                    setPort("443")                            // Porta
+                    setXHTTPTLS(true)                         // TLS ativado
+                    setXHTTPServerName("oracle.koom.pp.ua")  // SNI
+                    setXHTTPInsecure(true)                    // Ignorar cert inválido
+                    setXHTTPUploadBufferSize(32768L)          // Buffer 32KB
                     
-                    keepAliveInterval = 120
-                    keepAliveMaxRetry = 5
-                    reconnectDelay = 3
+                    // Autenticação (vazia = sem auth)
+                    setUsername("")
+                    setPassword("")
+                    
+                    // Timeouts
+                    setKeepAliveInterval(120L)
+                    setKeepAliveMaxRetry(5L)
+                    setReconnectDelay(3L)
+                    setTimeout(30L)
                 }
                 
-                log("⚙️ Config: $SERVER_HOST:$SERVER_PORT")
-                log("   SNI: $SERVER_SNI | Proxy: $PROXY_HOST | TLS: $USE_TLS")
+                log("⚙️ XHTTP Host: ${cfg.getXHTTPHost()}")
+                log("   Porta: ${cfg.getPort()} | TLS: ${cfg.getXHTTPTLS()}")
+                log("   SNI: ${cfg.getXHTTPServerName()}")
                 
                 // TunBuilder
-                val tunBuilder = TunInterfaceBuilder { ip ->
+                val tunBuilder = libDTProto.TunBuilder { ip ->
                     val builder = Builder()
                         .setSession("DTProto")
                         .setMtu(1500)
                         .addAddress(ip ?: "10.8.0.2", 32)
                         .addDnsServer("1.1.1.1")
+                        .addDnsServer("8.8.8.8")
                         .addRoute("0.0.0.0", 0)
                     val fd = builder.establish()
                         ?: throw IllegalStateException("Falha ao criar TUN")
                     fd.detachFd().toLong()
                 }
                 
-                // SocketOpener com protect()
-                val socketOpener = SocketOpener {
-                    val socket = Socket()
-                    if (!protect(socket)) {
-                        socket.close()
-                        throw IllegalStateException("VpnService.protect falhou")
-                    }
+                // SocketOpener
+                val socketOpener = libDTProto.SocketOpener {
+                    val socket = java.net.Socket()
                     ParcelFileDescriptor.fromSocket(socket).detachFd().toLong()
                 }
                 
+                // SocketProtector
+                val socketProtector = libDTProto.SocketProtector { fd ->
+                    // Proteger o socket
+                    protect(java.net.Socket())
+                }
+                
                 // Status Listener
-                val statusListener = StatusListener { status, error ->
-                    log("📊 $status")
+                val statusListener = libDTProto.StatusListener { status, error ->
+                    log("?? $status")
                     updateNotification(status ?: "desconhecido")
                     
-                    when (status) {
-                        "CONNECTING" -> log("⏳ Conectando...")
-                        "AUTHENTICATING" -> log("🔐 Autenticando...")
-                        "HANDSHAKING" -> log("🤝 Handshake...")
-                        "OPENING_TUN" -> log("🔧 Criando TUN...")
-                        "CONNECTED" -> log("✅ VPN CONECTADA!")
-                        "DISCONNECTED" -> log("🔌 Desconectado")
-                        "ERROR" -> {
-                            log("❌ ERRO: ${error?.message}")
-                            error?.printStackTrace()
-                        }
+                    if (status == "CONNECTED") log("✅ VPN CONECTADA!")
+                    if (status == "ERROR" && error != null) {
+                        log("❌ ${error.message}")
                     }
                 }
                 
                 // Log Handler
-                val logHandler = LogHandler { level, _, message ->
-                    runCatching { 
-                        Log.println(level.toInt(), TAG, message.orEmpty()) 
+                val logHandler = libDTProto.LogHandler { level, _, message ->
+                    val androidLevel = when (level.toInt()) {
+                        0 -> Log.DEBUG; 1 -> Log.INFO; 2 -> Log.WARN
+                        3 -> Log.ERROR; else -> Log.ASSERT
                     }
+                    Log.println(androidLevel, TAG, message ?: "")
                 }
                 
-                // Criar e iniciar cliente
-                client = LibDTProto.new_(cfg, tunBuilder, socketOpener, statusListener, logHandler)
-                (client as? LibDTProto)?.start()
+                // Criar cliente com OS 5 PARÂMETROS CORRETOS!
+                client = libDTProto.LibDTProto.new_(
+                    cfg,
+                    tunBuilder,
+                    socketOpener,
+                    socketProtector,
+                    statusListener,
+                    logHandler
+                )
+                
+                log("▶ Iniciando DTProto Client...")
+                client?.start()
                 
             } catch (e: Exception) {
                 log("❌ Erro fatal: ${e.message}")
@@ -140,10 +139,10 @@ class ProtoVpnService : VpnService() {
     }
     
     override fun onDestroy() {
-        log("🛑 Encerrando...")
+        log("?? Encerrando...")
         stopThread?.interrupt()
         stopThread = thread(name = "dtproto-stop") {
-            try { (client as? LibDTProto)?.stop() }
+            try { client?.stop() }
             catch (e: Exception) { log("Erro ao parar: ${e.message}") }
         }
         super.onDestroy()
