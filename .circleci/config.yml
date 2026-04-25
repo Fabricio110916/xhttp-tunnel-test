@@ -14,13 +14,19 @@ jobs:
             wget -q https://github.com/xjasonlyu/tun2socks/archive/refs/tags/v2.6.0.tar.gz
             tar -xzf v2.6.0.tar.gz
             cd tun2socks-2.6.0
-            echo "Compilando para Android ARM64..."
-            GOOS=android GOARCH=arm64 CGO_ENABLED=0 go build -o libtun2socks.so -buildmode=c-shared .
-            ls -la *.so
+            
+            echo "Compilando para Android ARM64 (binário)..."
+            GOOS=android GOARCH=arm64 go build -o tun2socks-arm64 .
+            ls -la tun2socks-arm64
+            
+            echo "Compilando para Linux (servidor)..."
+            GOOS=linux GOARCH=amd64 go build -o tun2socks-linux-amd64 .
+            ls -la tun2socks-linux-amd64
+            
             echo "Sucesso!"
       - store_artifacts:
           path: /tmp/tun2socks-2.6.0/
-          destination: tun2socks-libs
+          destination: tun2socks-binaries
 
 workflows:
   version: 2
