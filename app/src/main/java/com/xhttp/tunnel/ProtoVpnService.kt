@@ -2,7 +2,6 @@ package com.xhttp.tunnel
 
 import android.app.*
 import android.content.Intent
-import android.content.res.AssetManager
 import android.net.VpnService
 import android.os.*
 import android.util.Log
@@ -14,7 +13,7 @@ class ProtoVpnService : VpnService() {
     
     private var vpnInterface: ParcelFileDescriptor? = null
     private var socket: Socket? = null
-    private var tun2socksProcess: Process? = null
+    private var tun2socksProcess: java.lang.Process? = null
     private var isRunning = false
     
     companion object {
@@ -38,12 +37,10 @@ class ProtoVpnService : VpnService() {
     private fun extractTun2socks(): File {
         val destFile = File(filesDir, "tun2socks")
         if (!destFile.exists()) {
-            // Extrair da assets
             val input = assets.open("tun2socks")
             val output = FileOutputStream(destFile)
             input.copyTo(output)
-            input.close()
-            output.close()
+            input.close(); output.close()
             destFile.setExecutable(true)
             log("?? tun2socks extraído: ${destFile.length()} bytes")
         }
@@ -54,9 +51,7 @@ class ProtoVpnService : VpnService() {
         isRunning = true
         
         try {
-            log("═══════════════════════════════════")
             log("?? VPN + tun2socks")
-            log("═══════════════════════════════════")
             
             // PASSO 1: WebSocket
             log("[1/4] WebSocket...")
@@ -91,23 +86,12 @@ class ProtoVpnService : VpnService() {
             vpnInterface = builder.establish() ?: throw Exception("VPN null")
             log("✅ VPN criada!")
             
-            // PASSO 3: Iniciar tun2socks
+            // PASSO 3: tun2socks
             log("[3/4] tun2socks...")
             val tunFile = extractTun2socks()
             
-            // Criar configuração do tun2socks
-            val configFile = File(filesDir, "tun2socks.conf")
-            configFile.writeText("""
-proxy: socks5://127.0.0.1:1080
-device: tun://tun0
-mtu: 1500
-loglevel: info
-""")
-            
-            // Iniciar tun2socks como processo
             val pb = ProcessBuilder(
                 tunFile.absolutePath,
-                "-config", configFile.absolutePath,
                 "-proxy", "socks5://127.0.0.1:1080",
                 "-device", "tun://tun0",
                 "-mtu", "1500",
@@ -118,12 +102,12 @@ loglevel: info
             tun2socksProcess = pb.start()
             log("✅ tun2socks iniciado!")
             
-            // PASSO 4: SOCKS5 local (encaminha para WebSocket)
+            // PASSO 4: SOCKS5 local
             log("[4/4] SOCKS5...")
             thread(name = "SocksServer") {
                 try {
-                    val server = ServerSocket(1080) // Porta SOCKS5 local
-                    log("?? SOCKS5 ouvindo em 127.0.0.1:1080")
+                    val server = ServerSocket(1080)
+                    log("?? SOCKS5 em 127.0.0.1:1080")
                     
                     while (isRunning) {
                         val client = server.accept()
@@ -134,25 +118,19 @@ loglevel: info
                                 val clientIn = client.inputStream
                                 val clientOut = client.outputStream
                                 
-                                // Encaminhar
                                 thread { try { clientIn.copyTo(sockOut) } catch(e: Exception) {} }
                                 thread { try { sockIn.copyTo(clientOut) } catch(e: Exception) {} }
                             } catch(e: Exception) {}
                         }
                     }
                 } catch (e: Exception) {
-                    log("❌ SOCKS5 erro: ${e.message}")
+                    if (isRunning) log("SOCKS5: ${e.message}")
                 }
             }
             
-            log("")
-            log("═══════════════════════════════════")
             log("?? VPN COMPLETA!")
-            log("═══════════════════════════════════")
             log("?? IP: 10.8.0.2")
-            log("?? WebSocket: oracle.koom.pp.ua:80")
             log("?? tun2socks: TUN ↔ SOCKS5")
-            log("?? Ícone VPN: DEVE aparecer!")
             
         } catch (e: Exception) {
             log("❌ ${e.message}")
