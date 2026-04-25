@@ -3,21 +3,33 @@ version: 2.1
 jobs:
   build-tun2socks-so:
     docker:
-      - image: cimg/android:2024.01
+      - image: cimg/go:1.23
     resource_class: medium
     steps:
       - run:
-          name: Install Go
+          name: Install NDK
           command: |
             sudo apt-get update -qq
-            sudo apt-get install -y golang-go
-            go version
+            sudo apt-get install -y unzip wget
+            mkdir -p /tmp/ndk
+            cd /tmp/ndk
+            wget -q https://dl.google.com/android/repository/android-ndk-r26d-linux.zip
+            unzip -q android-ndk-r26d-linux.zip
+            export ANDROID_NDK_HOME=/tmp/ndk/android-ndk-r26d
+            echo "NDK installed at $ANDROID_NDK_HOME"
       - run:
           name: Download tun2socks source
           command: |
             cd /tmp
             wget -q https://github.com/xjasonlyu/tun2socks/archive/refs/tags/v2.6.0.tar.gz
             tar -xzf v2.6.0.tar.gz
+      - run:
+          name: Fix go.mod version
+          command: |
+            cd /tmp/tun2socks-2.6.0
+            sed -i 's/^go 1.23.1/go 1.23/' go.mod
+            sed -i 's/^go 1.23.0/go 1.23/' go.mod
+            cat go.mod | head -5
       - run:
           name: Create export.go with JNI functions
           command: |
@@ -47,9 +59,10 @@ jobs:
       - run:
           name: Build .so for Android ARM64
           command: |
-            export ANDROID_NDK_HOME=$ANDROID_HOME/ndk/26.3.11579264
+            export ANDROID_NDK_HOME=/tmp/ndk/android-ndk-r26d
             export TOOLCHAIN=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64
             export CC=$TOOLCHAIN/bin/aarch64-linux-android21-clang
+            export CXX=$TOOLCHAIN/bin/aarch64-linux-android21-clang++
             export CGO_ENABLED=1
             export GOOS=android
             export GOARCH=arm64
