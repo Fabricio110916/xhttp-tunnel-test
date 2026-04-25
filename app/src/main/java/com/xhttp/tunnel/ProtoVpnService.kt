@@ -70,39 +70,26 @@ class ProtoVpnService : VpnService() {
             log("[3/4] Encaminhamento...")
             val tlsIn = tlsSocket!!.inputStream
             val tlsOut = tlsSocket!!.outputStream
-            val fd = vpnInterface!!.fileDescriptor
             
             // Upload: FileInputStream FUNCIONA
             thread(name = "Upload") {
                 try {
-                    val vpnIn = FileInputStream(fd)
+                    val vpnIn = FileInputStream(vpnInterface!!.fileDescriptor)
                     val buf = ByteArray(32768)
                     var len: Int
-                    var total = 0L
                     while (isRunning) {
                         len = vpnIn.read(buf)
-                        if (len > 0) { tlsOut.write(buf, 0, len); tlsOut.flush(); total += len }
+                        if (len > 0) { tlsOut.write(buf, 0, len); tlsOut.flush() }
                     }
                 } catch (e: Exception) {
                     if (isRunning) log("?? ${e.message}")
                 }
             }
             
-            // Download: Usar REFLECTION para obter FD de escrita!
+            // Download: AutoCloseOutputStream FUNCIONA no Android 14
             thread(name = "Download") {
                 try {
-                    // Obter o fd interno via reflection
-                    val fdField = ParcelFileDescriptor::class.java.getDeclaredField("mFd")
-                    fdField.isAccessible = true
-                    val fdInt = fdField.getInt(vpnInterface!!)
-                    
-                    // Criar FileDescriptor a partir do int
-                    val writeFd = FileDescriptor()
-                    val fdField2 = FileDescriptor::class.java.getDeclaredField("fd")
-                    fdField2.isAccessible = true
-                    fdField2.setInt(writeFd, fdInt)
-                    
-                    val vpnOut = FileOutputStream(writeFd)
+                    val vpnOut = ParcelFileDescriptor.AutoCloseOutputStream(vpnInterface!!)
                     val buf = ByteArray(32768)
                     var len: Int
                     var total = 0L
