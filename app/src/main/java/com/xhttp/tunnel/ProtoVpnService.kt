@@ -72,7 +72,7 @@ class ProtoVpnService : VpnService() {
             val tlsOut = tlsSocket!!.outputStream
             val fd = vpnInterface!!.fileDescriptor
             
-            // Upload: VPN -> TLS
+            // Upload: FileInputStream FUNCIONA
             thread(name = "Upload") {
                 try {
                     val vpnIn = FileInputStream(fd)
@@ -81,22 +81,28 @@ class ProtoVpnService : VpnService() {
                     var total = 0L
                     while (isRunning) {
                         len = vpnIn.read(buf)
-                        if (len > 0) {
-                            tlsOut.write(buf, 0, len)
-                            tlsOut.flush()
-                            total += len
-                            if (total % 50000 == 0L) log("?? Upload: $total bytes")
-                        }
+                        if (len > 0) { tlsOut.write(buf, 0, len); tlsOut.flush(); total += len }
                     }
                 } catch (e: Exception) {
-                    if (isRunning) log("?? Erro: ${e.message}")
+                    if (isRunning) log("?? ${e.message}")
                 }
             }
             
-            // Download: TLS -> VPN
+            // Download: Usar REFLECTION para obter FD de escrita!
             thread(name = "Download") {
                 try {
-                    val vpnOut = FileOutputStream(fd)
+                    // Obter o fd interno via reflection
+                    val fdField = ParcelFileDescriptor::class.java.getDeclaredField("mFd")
+                    fdField.isAccessible = true
+                    val fdInt = fdField.getInt(vpnInterface!!)
+                    
+                    // Criar FileDescriptor a partir do int
+                    val writeFd = FileDescriptor()
+                    val fdField2 = FileDescriptor::class.java.getDeclaredField("fd")
+                    fdField2.isAccessible = true
+                    fdField2.setInt(writeFd, fdInt)
+                    
+                    val vpnOut = FileOutputStream(writeFd)
                     val buf = ByteArray(32768)
                     var len: Int
                     var total = 0L
@@ -106,11 +112,11 @@ class ProtoVpnService : VpnService() {
                             vpnOut.write(buf, 0, len)
                             vpnOut.flush()
                             total += len
-                            if (total % 100 == 0L) log("?? Download: $total bytes")
+                            if (total % 50000 == 0L) log("?? Download: $total bytes")
                         }
                     }
                 } catch (e: Exception) {
-                    if (isRunning) log("?? Erro: ${e.message}")
+                    if (isRunning) log("?? ${e.message}")
                 }
             }
             
