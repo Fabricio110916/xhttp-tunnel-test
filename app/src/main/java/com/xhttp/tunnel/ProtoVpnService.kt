@@ -13,7 +13,7 @@ import kotlin.concurrent.thread
 class ProtoVpnService : VpnService() {
     
     private var vpnInterface: ParcelFileDescriptor? = null
-    private var tlsSocket: SSLSocket? = null
+    private var socket: Socket? = null
     private var isRunning = false
     
     companion object {
@@ -39,45 +39,56 @@ class ProtoVpnService : VpnService() {
         
         try {
             log("═══════════════════════════════════")
-            log("?? VPN + WebSocket (SEM encaminhamento)")
+            log("?? XHTTP WebSocket VPN")
             log("═══════════════════════════════════")
+            log("?? oracle.koom.pp.ua:80")
+            log("?? Payload: GET / HTTP/1.1")
+            log("?? Upgrade: websocket")
+            log("")
             
-            // PASSO 1: TLS
-            log("[1/4] TLS...")
+            // PASSO 1: TCP
+            log("[1/5] TCP...")
             val rawSocket = Socket()
-            rawSocket.connect(InetSocketAddress("168.138.147.212", 443), 10000)
-            val ctx = SSLContext.getInstance("TLS")
-            ctx.init(null, arrayOf(TrustAll()), java.security.SecureRandom())
-            tlsSocket = ctx.socketFactory.createSocket(rawSocket, "oracle.koom.pp.ua", 443, true) as SSLSocket
-            tlsSocket?.startHandshake()
-            log("✅ TLS: ${tlsSocket?.session?.cipherSuite}")
+            rawSocket.connect(InetSocketAddress("168.138.147.212", 80), 10000)
+            socket = rawSocket
+            log("✅ TCP conectado na porta 80")
             
-            // PASSO 2: WebSocket
-            log("[2/4] WebSocket...")
-            val w = OutputStreamWriter(tlsSocket!!.outputStream)
-            w.write("GET /ssh HTTP/1.1\r\n")
+            // PASSO 2: WebSocket Handshake
+            log("[2/5] WebSocket...")
+            val w = OutputStreamWriter(socket!!.outputStream)
+            w.write("GET / HTTP/1.1\r\n")
             w.write("Host: oracle.koom.pp.ua\r\n")
             w.write("Upgrade: websocket\r\n")
             w.write("Connection: Upgrade\r\n")
             w.write("\r\n")
             w.flush()
+            log("   ?? Payload enviado")
             
-            val r = BufferedReader(InputStreamReader(tlsSocket!!.inputStream))
+            // Ler resposta
+            val r = BufferedReader(InputStreamReader(socket!!.inputStream))
             var line: String?
+            var status = ""
             while (r.readLine().also { line = it } != null) {
-                log("   $line")
+                log("   ?? $line")
+                if (line!!.startsWith("HTTP/")) status = line!!
                 if (line!!.isEmpty()) break
             }
-            log("✅ WebSocket OK")
             
-            // PASSO 3: PROTEGER o socket (NÃO passa pela VPN!)
-            protect(tlsSocket!!)
-            log("[3/4] Socket protegido")
+            if (status.contains("101")) {
+                log("✅ WebSocket conectado! (101)")
+            } else {
+                log("❌ Servidor respondeu: $status")
+                throw Exception("WebSocket falhou: $status")
+            }
             
-            // PASSO 4: VPN (SEM encaminhamento manual!)
-            log("[4/4] VPN...")
+            // PASSO 3: Proteger socket
+            protect(socket!!)
+            log("[3/5] Socket protegido")
+            
+            // PASSO 4: VPN
+            log("[4/5] VPN...")
             val builder = Builder()
-                .setSession("ProtoVPN")
+                .setSession("XHTTP WS VPN")
                 .setMtu(1500)
                 .addAddress("10.8.0.2", 32)
                 .addDnsServer("1.1.1.1")
@@ -85,29 +96,52 @@ class ProtoVpnService : VpnService() {
                 .addRoute("0.0.0.0", 0)
             
             vpnInterface = builder.establish() ?: throw Exception("VPN null")
-            log("✅ VPN CRIADA!")
+            log("✅ VPN criada!")
+            
+            // PASSO 5: Encaminhamento
+            log("[5/5] Encaminhando...")
+            
+            val sockIn = socket!!.inputStream
+            val sockOut = socket!!.outputStream
+            val fd = vpnInterface!!.fileDescriptor
+            
+            // Upload: VPN -> Socket
+            thread(name = "Upload") {
+                try {
+                    val vpnIn = FileInputStream(fd)
+                    val buf = ByteArray(32768)
+                    var len: Int
+                    while (isRunning) {
+                        len = vpnIn.read(buf)
+                        if (len > 0) { sockOut.write(buf, 0, len); sockOut.flush() }
+                    }
+                } catch (e: Exception) {
+                    if (isRunning) log("?? ${e.message}")
+                }
+            }
+            
+            // Download: Socket -> VPN
+            thread(name = "Download") {
+                try {
+                    val vpnOut = ParcelFileDescriptor.AutoCloseOutputStream(vpnInterface!!)
+                    val buf = ByteArray(32768)
+                    var len: Int
+                    while (isRunning) {
+                        len = sockIn.read(buf)
+                        if (len > 0) { vpnOut.write(buf, 0, len); vpnOut.flush() }
+                    }
+                } catch (e: Exception) {
+                    if (isRunning) log("?? ${e.message}")
+                }
+            }
             
             log("")
             log("═══════════════════════════════════")
-            log("?? VPN ATIVA!")
+            log("?? VPN COMPLETA!")
             log("═══════════════════════════════════")
             log("?? IP: 10.8.0.2")
-            log("?? TLS: ${tlsSocket?.session?.cipherSuite}")
-            log("?? WebSocket: Conectado")
-            log("??️ Socket: Protegido (não passa pela VPN)")
-            log("?? Ícone de VPN: DEVE aparecer!")
-            log("")
-            log("?? O Android vai rotear o tráfego automaticamente!")
-            log("⏸ Monitorando...")
-            
-            // Monitorar
-            var seg = 0
-            while (isRunning) {
-                Thread.sleep(5000)
-                seg += 5
-                val tlsStatus = try { tlsSocket?.isConnected == true } catch(e: Exception) { false }
-                log("⏰ ${seg}s | VPN: ATIVA | TLS: ${if (tlsStatus) "CONECTADO" else "DESCONECTADO"}")
-            }
+            log("?? Porta: 80 (HTTP)")
+            log("?? WebSocket: oracle.koom.pp.ua")
             
         } catch (e: Exception) {
             log("❌ ${e.message}")
@@ -117,9 +151,9 @@ class ProtoVpnService : VpnService() {
     
     private fun stopVpn() {
         isRunning = false
-        try { tlsSocket?.close() } catch(e: Exception) {}
+        try { socket?.close() } catch(e: Exception) {}
         try { vpnInterface?.close() } catch(e: Exception) {}
-        tlsSocket = null; vpnInterface = null
+        socket = null; vpnInterface = null
         stopForeground(true); stopSelf()
     }
     
