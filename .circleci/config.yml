@@ -8,8 +8,9 @@ jobs:
     steps:
       - checkout
       - run:
-          name: Build APK
+          name: Build APK with increased memory
           command: |
+            echo "org.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m" >> gradle.properties
             chmod +x gradlew
             ./gradlew assembleDebug --no-daemon
       - store_artifacts:
