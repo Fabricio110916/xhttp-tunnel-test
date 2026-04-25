@@ -23,7 +23,7 @@ class ProtoVpnService : VpnService() {
     
     private fun log(msg: String) {
         Log.i("ProtoVPN", msg)
-        logCallback?.invoke(msg)
+        try { logCallback?.invoke(msg) } catch(e: Exception) {}
     }
     
     override fun onCreate() { super.onCreate() }
