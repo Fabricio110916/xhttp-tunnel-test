@@ -45,14 +45,22 @@ class ProtoVpnService : VpnService() {
         return START_STICKY
     }
     
+    private fun getFdInt(pfd: ParcelFileDescriptor): Int {
+        // Método 1: Usar detachFd() para obter o fd cru
+        val rawFd = pfd.detachFd()
+        val fdInt = rawFd.toInt()
+        Log.i("ProtoVPN", "fdInt via detachFd: $fdInt")
+        return fdInt
+    }
+    
     private fun startVpn() {
         isRunning = true
         
         try {
-            log("?? VPN + tun2socks")
+            log("?? VPN + tun2socks NATIVO")
             
             // PASSO 1: WebSocket
-            log("[1/3] WebSocket...")
+            log("[1/4] WebSocket...")
             val rawSocket = Socket()
             protect(rawSocket)
             rawSocket.connect(InetSocketAddress("168.138.147.212", 80), 10000)
@@ -74,7 +82,7 @@ class ProtoVpnService : VpnService() {
             log("✅ WebSocket OK")
             
             // PASSO 2: VPN
-            log("[2/3] VPN...")
+            log("[2/4] VPN...")
             val builder = Builder()
                 .setSession("XHTTP VPN")
                 .setMtu(1500)
@@ -85,11 +93,28 @@ class ProtoVpnService : VpnService() {
             builder.addDisallowedApplication("com.xhttp.tunnel")
             
             vpnInterface = builder.establish() ?: throw Exception("VPN null")
-            val fd = vpnInterface!!.fileDescriptor
             log("✅ VPN criada!")
             
-            // PASSO 3: SOCKS5 local (SEM tun2socks!)
-            log("[3/3] SOCKS5...")
+            // PASSO 3: tun2socks nativo (SEM reflection!)
+            log("[3/4] tun2socks...")
+            try {
+                // Obter fd usando detachFd() - método oficial do Android!
+                val fdInt = vpnInterface!!.detachFd().toInt()
+                log("   fdInt obtido: $fdInt")
+                
+                val result = StartTun2socks(
+                    "socks5://127.0.0.1:1080",
+                    "fd://${fdInt}",
+                    1500
+                )
+                log("✅ tun2socks iniciado! (result=$result)")
+            } catch (e: Exception) {
+                log("❌ tun2socks falhou: ${e.message}")
+                // CONTINUAR mesmo sem tun2socks!
+            }
+            
+            // PASSO 4: SOCKS5 local
+            log("[4/4] SOCKS5...")
             thread(name = "SocksServer") {
                 try {
                     val server = ServerSocket()
@@ -125,6 +150,7 @@ class ProtoVpnService : VpnService() {
             
             log("?? VPN COMPLETA!")
             log("?? IP: 10.8.0.2")
+            log("?? libtun2socks.so NATIVA!")
             log("??️ App excluído + sockets protegidos!")
             
         } catch (e: Exception) {
@@ -135,10 +161,12 @@ class ProtoVpnService : VpnService() {
     
     private fun stopVpn() {
         isRunning = false
+        try { StopTun2socks() } catch(e: Exception) {}
         try { socket?.close() } catch(e: Exception) {}
         try { vpnInterface?.close() } catch(e: Exception) {}
         socket = null; vpnInterface = null
         stopForeground(true); stopSelf()
+        log("⏹ VPN parada")
     }
     
     override fun onDestroy() { stopVpn(); super.onDestroy() }
