@@ -119,7 +119,6 @@ class ProtoVpnService : VpnService() {
                 try {
                     val server = ServerSocket()
                     server.bind(InetSocketAddress("127.0.0.1", 1080))
-                    protect(server)
                     log("?? SOCKS5 em 127.0.0.1:1080")
                     
                     while (isRunning) {
