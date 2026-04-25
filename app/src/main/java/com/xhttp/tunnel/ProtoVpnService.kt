@@ -147,3 +147,4 @@ class ProtoVpnService : VpnService() {
     
     override fun onDestroy() { stopVpn(); super.onDestroy() }
 }
+// Force rebuild Sat Apr 25 17:17:33 CST 2026
