@@ -13,7 +13,6 @@ class MainActivity : AppCompatActivity() {
     
     private lateinit var startButton: Button
     private lateinit var stopButton: Button
-    private lateinit var forceStopButton: Button
     private lateinit var statusText: TextView
     private lateinit var logText: TextView
     private lateinit var scrollView: ScrollView
@@ -26,7 +25,6 @@ class MainActivity : AppCompatActivity() {
         
         startButton = findViewById(R.id.startButton)
         stopButton = findViewById(R.id.stopButton)
-        forceStopButton = findViewById(R.id.forceStopButton)
         statusText = findViewById(R.id.statusText)
         logText = findViewById(R.id.terminalText)
         scrollView = findViewById(R.id.terminalScroll)
@@ -45,18 +43,12 @@ class MainActivity : AppCompatActivity() {
         }
         
         stopButton.setOnClickListener {
-            stopService(Intent(this, ProtoVpnService::class.java).apply { action = "STOP" })
+            // ?? Enviar STOP para o serviço
+            val stopIntent = Intent(this, ProtoVpnService::class.java).apply { action = "STOP" }
+            startService(stopIntent)
             startButton.isEnabled = true
             stopButton.isEnabled = false
             statusText.text = "Parado"
-        }
-        
-        forceStopButton.setOnClickListener {
-            stopService(Intent(this, ProtoVpnService::class.java))
-            startButton.isEnabled = true
-            stopButton.isEnabled = false
-            forceStopButton.isEnabled = false
-            statusText.text = "Parada forçada"
         }
         
         logText.text = "?? ProtoVPN\n?? 168.138.147.212:443\n\n"
@@ -71,7 +63,6 @@ class MainActivity : AppCompatActivity() {
         startService(Intent(this, ProtoVpnService::class.java))
         startButton.isEnabled = false
         stopButton.isEnabled = true
-        forceStopButton.isEnabled = true
         statusText.text = "VPN Ativa"
     }
 }
