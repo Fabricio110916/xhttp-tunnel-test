@@ -18,47 +18,45 @@ jobs:
             cd /tmp
             wget -q https://github.com/xjasonlyu/tun2socks/archive/refs/tags/v2.6.0.tar.gz
             tar -xzf v2.6.0.tar.gz
-            cd tun2socks-2.6.0
+            ls -la tun2socks-2.6.0
       - run:
           name: Add JNI export functions
           command: |
-            cd /tmp/tun2socks-2.6.0
-            cat > export.go << 'GOEOF'
-package main
-
-import "C"
-import (
-"fmt"
-"os"
-)
-
-//export StartTun2socks
-func StartTun2socks(cProxy *C.char, cDevice *C.char, cMtu C.int) C.int {
-proxy := C.GoString(cProxy)
-device := C.GoString(cDevice)
-mtu := int(cMtu)
-
-os.Args = []string{
-"tun2socks",
-"-proxy", proxy,
-"-device", device,
-"-mtu", fmt.Sprintf("%d", mtu),
-"-loglevel", "info",
-}
-
-go main()
-return 0
-}
-
-//export StopTun2socks
-func StopTun2socks() {}
-
-func main() {}
-GOEOF
+            cat > /tmp/tun2socks-2.6.0/export.go << 'GOEOF'
+            package main
+            
+            import "C"
+            import (
+                "fmt"
+                "os"
+            )
+            
+            //export StartTun2socks
+            func StartTun2socks(cProxy *C.char, cDevice *C.char, cMtu C.int) C.int {
+                proxy := C.GoString(cProxy)
+                device := C.GoString(cDevice)
+                mtu := int(cMtu)
+            
+                os.Args = []string{
+                    "tun2socks",
+                    "-proxy", proxy,
+                    "-device", device,
+                    "-mtu", fmt.Sprintf("%d", mtu),
+                    "-loglevel", "info",
+                }
+            
+                go main()
+                return 0
+            }
+            
+            //export StopTun2socks
+            func StopTun2socks() {}
+            
+            func main() {}
+            GOEOF
       - run:
           name: Build .so for Android ARM64
           command: |
-            cd /tmp/tun2socks-2.6.0
             export ANDROID_NDK_HOME=$ANDROID_HOME/ndk/26.3.11579264
             export TOOLCHAIN=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64
             export CC=$TOOLCHAIN/bin/aarch64-linux-android21-clang
@@ -66,6 +64,7 @@ GOEOF
             export GOOS=android
             export GOARCH=arm64
             export CGO_ENABLED=1
+            cd /tmp/tun2socks-2.6.0
             go build -o libtun2socks.so -buildmode=c-shared .
             ls -la libtun2socks.so
       - store_artifacts:
