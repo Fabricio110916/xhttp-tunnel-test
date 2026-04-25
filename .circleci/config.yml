@@ -1,27 +1,38 @@
 version: 2.1
 
 jobs:
-  build:
+  build-tun2socks:
     docker:
-      - image: cimg/android:2024.01
+      - image: cimg/go:1.21
     resource_class: medium
-    environment:
-      GRADLE_OPTS: -Xmx512m -XX:MaxMetaspaceSize=128m
     steps:
       - checkout
       - run:
-          name: Build APK
+          name: Get tun2socks source
           command: |
-            echo "android.useAndroidX=true" >> gradle.properties
-            echo "android.enableJetifier=true" >> gradle.properties
-            echo "org.gradle.jvmargs=-Xmx512m" >> gradle.properties
-            chmod +x gradlew
-            ./gradlew assembleDebug --no-daemon --no-parallel
+            cd /tmp
+            cp /root/tun2socks-2.6.0.zip . 2>/dev/null
+            unzip tun2socks-2.6.0.zip
+            cd tun2socks-2.6.0
+            ls -la
+      - run:
+          name: Build for Android ARM64
+          command: |
+            cd /tmp/tun2socks-2.6.0
+            GOOS=android GOARCH=arm64 CGO_ENABLED=0 go build -o tun2socks-android-arm64 .
+            ls -la tun2socks-android-arm64
+      - run:
+          name: Build for Android ARM
+          command: |
+            cd /tmp/tun2socks-2.6.0
+            GOOS=android GOARCH=arm CGO_ENABLED=0 go build -o tun2socks-android-arm .
+            ls -la tun2socks-android-arm
       - store_artifacts:
-          path: app/build/outputs/apk/debug/
-          destination: apk
+          path: /tmp/tun2socks-2.6.0/
+          destination: tun2socks-binaries
 
 workflows:
+  version: 2
   build:
     jobs:
-      - build
+      - build-tun2socks
