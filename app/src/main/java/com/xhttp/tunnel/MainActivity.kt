@@ -51,9 +51,7 @@ class MainActivity : AppCompatActivity() {
             statusText.text = "Parado"
         }
         
-        // ?? BOTÃO DE PARADA FORÇADA
         forceStopButton.setOnClickListener {
-            log("?? Forçando parada...")
             stopService(Intent(this, ProtoVpnService::class.java))
             startButton.isEnabled = true
             stopButton.isEnabled = false
