@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.VpnService
 import android.os.*
 import android.util.Log
+import androidx.core.app.NotificationCompat
 import java.io.*
 import java.net.*
 import javax.net.ssl.*
@@ -18,6 +19,7 @@ class ProtoVpnService : VpnService() {
     
     companion object {
         private const val NOTIFICATION_ID = 999
+        private const val CHANNEL_ID = "proto_vpn"
         var logCallback: ((String) -> Unit)? = null
     }
     
@@ -26,18 +28,20 @@ class ProtoVpnService : VpnService() {
         logCallback?.invoke(msg)
     }
     
-    override fun onCreate() { super.onCreate() }
+    override fun onCreate() {
+        super.onCreate()
+        createNotificationChannel()
+    }
     
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // ?? Se receber STOP, parar IMEDIATAMENTE
         if (intent?.action == "STOP") {
-            log("?? STOP recebido!")
+            log("🛑 STOP recebido!")
             stopVpn()
             return START_NOT_STICKY
         }
         
         if (!isRunning) {
-            startForeground(NOTIFICATION_ID, Notification())
+            startForeground(NOTIFICATION_ID, buildNotification("Conectando..."))
             thread { startVpn() }
         }
         return START_STICKY
@@ -98,7 +102,7 @@ class ProtoVpnService : VpnService() {
                 } catch (e: Exception) {}
             }
             
-            log("[4/4] ?? VPN COMPLETA!")
+            log("[4/4] 🎉 VPN COMPLETA!")
             
         } catch (e: Exception) {
             log("❌ ${e.message}")
@@ -107,23 +111,31 @@ class ProtoVpnService : VpnService() {
     }
     
     private fun stopVpn() {
-        log("?? stopVpn() chamado")
+        log("🛑 stopVpn()")
         isRunning = false
-        
-        // Fechar sockets
         try { tlsSocket?.close() } catch(e: Exception) {}
         try { vpnInterface?.close() } catch(e: Exception) {}
-        
         tlsSocket = null
         vpnInterface = null
-        
         stopForeground(true)
         stopSelf()
-        log("✅ VPN completamente parada")
     }
     
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(CHANNEL_ID, "ProtoVPN", NotificationManager.IMPORTANCE_LOW)
+            getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
+        }
+    }
+    
+    private fun buildNotification(text: String) = NotificationCompat.Builder(this, CHANNEL_ID)
+        .setSmallIcon(android.R.drawable.ic_dialog_info)
+        .setContentTitle("ProtoVPN")
+        .setContentText(text)
+        .setOngoing(true)
+        .build()
+    
     override fun onDestroy() {
-        log("onDestroy()")
         stopVpn()
         super.onDestroy()
     }
