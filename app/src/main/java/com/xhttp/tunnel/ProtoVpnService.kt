@@ -29,13 +29,7 @@ class ProtoVpnService : VpnService() {
     override fun onCreate() { super.onCreate() }
     
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // ?? TRATAR STOP CORRETAMENTE
-        if (intent?.action == "STOP") {
-            log("?? STOP recebido!")
-            stopVpn()
-            return START_NOT_STICKY
-        }
-        
+        if (intent?.action == "STOP") { stopVpn(); return START_NOT_STICKY }
         if (!isRunning) { thread { startVpn() } }
         return START_STICKY
     }
@@ -76,23 +70,48 @@ class ProtoVpnService : VpnService() {
             log("[3/4] Encaminhamento...")
             val tlsIn = tlsSocket!!.inputStream
             val tlsOut = tlsSocket!!.outputStream
+            val fd = vpnInterface!!.fileDescriptor
             
+            // Upload: VPN -> TLS
             thread(name = "Upload") {
                 try {
-                    val vpnIn = FileInputStream(vpnInterface!!.fileDescriptor)
+                    val vpnIn = FileInputStream(fd)
                     val buf = ByteArray(32768)
                     var len: Int
-                    while (isRunning) { len = vpnIn.read(buf); if (len > 0) { tlsOut.write(buf, 0, len); tlsOut.flush() } }
-                } catch (e: Exception) {}
+                    var total = 0L
+                    while (isRunning) {
+                        len = vpnIn.read(buf)
+                        if (len > 0) {
+                            tlsOut.write(buf, 0, len)
+                            tlsOut.flush()
+                            total += len
+                            if (total % 50000 == 0L) log("?? Upload: $total bytes")
+                        }
+                    }
+                } catch (e: Exception) {
+                    if (isRunning) log("?? Erro: ${e.message}")
+                }
             }
             
+            // Download: TLS -> VPN
             thread(name = "Download") {
                 try {
-                    val vpnOut = FileOutputStream(vpnInterface!!.fileDescriptor)
+                    val vpnOut = FileOutputStream(fd)
                     val buf = ByteArray(32768)
                     var len: Int
-                    while (isRunning) { len = tlsIn.read(buf); if (len > 0) { vpnOut.write(buf, 0, len); vpnOut.flush() } }
-                } catch (e: Exception) {}
+                    var total = 0L
+                    while (isRunning) {
+                        len = tlsIn.read(buf)
+                        if (len > 0) {
+                            vpnOut.write(buf, 0, len)
+                            vpnOut.flush()
+                            total += len
+                            if (total % 100 == 0L) log("?? Download: $total bytes")
+                        }
+                    }
+                } catch (e: Exception) {
+                    if (isRunning) log("?? Erro: ${e.message}")
+                }
             }
             
             log("[4/4] ?? VPN COMPLETA!")
@@ -104,35 +123,14 @@ class ProtoVpnService : VpnService() {
     }
     
     private fun stopVpn() {
-        log("?? stopVpn()")
         isRunning = false
-        
-        // ?? Fechar sockets PRIMEIRO (isso libera a chave VPN!)
-        try { tlsSocket?.close() } catch(e: Exception) { log("Erro ao fechar TLS: ${e.message}") }
-        try { vpnInterface?.close() } catch(e: Exception) { log("Erro ao fechar VPN: ${e.message}") }
-        
-        tlsSocket = null
-        vpnInterface = null
-        
-        // ?? Depois parar o serviço
-        stopForeground(true)
-        stopSelf()
-        
-        log("✅ VPN completamente parada")
+        try { tlsSocket?.close() } catch(e: Exception) {}
+        try { vpnInterface?.close() } catch(e: Exception) {}
+        tlsSocket = null; vpnInterface = null
+        stopForeground(true); stopSelf()
     }
     
-    override fun onDestroy() {
-        log("onDestroy()")
-        stopVpn()
-        super.onDestroy()
-    }
-    
-    override fun onRevoke() {
-        // ?? Quando o sistema revoga a VPN
-        log("⚠️ onRevoke() - VPN revogada pelo sistema!")
-        stopVpn()
-        super.onRevoke()
-    }
+    override fun onDestroy() { stopVpn(); super.onDestroy() }
     
     class TrustAll : X509TrustManager {
         override fun checkClientTrusted(chain: Array<java.security.cert.X509Certificate>, authType: String) {}
