@@ -6,30 +6,21 @@ jobs:
       - image: cimg/go:1.21
     resource_class: medium
     steps:
-      - checkout
       - run:
-          name: Get tun2socks source
+          name: Download and build tun2socks
           command: |
             cd /tmp
-            cp /root/tun2socks-2.6.0.zip . 2>/dev/null
-            unzip tun2socks-2.6.0.zip
+            echo "Baixando tun2socks v2.6.0..."
+            wget -q https://github.com/xjasonlyu/tun2socks/archive/refs/tags/v2.6.0.tar.gz
+            tar -xzf v2.6.0.tar.gz
             cd tun2socks-2.6.0
-            ls -la
-      - run:
-          name: Build for Android ARM64
-          command: |
-            cd /tmp/tun2socks-2.6.0
-            GOOS=android GOARCH=arm64 CGO_ENABLED=0 go build -o tun2socks-android-arm64 .
-            ls -la tun2socks-android-arm64
-      - run:
-          name: Build for Android ARM
-          command: |
-            cd /tmp/tun2socks-2.6.0
-            GOOS=android GOARCH=arm CGO_ENABLED=0 go build -o tun2socks-android-arm .
-            ls -la tun2socks-android-arm
+            echo "Compilando para Android ARM64..."
+            GOOS=android GOARCH=arm64 CGO_ENABLED=0 go build -o libtun2socks.so -buildmode=c-shared .
+            ls -la *.so
+            echo "Sucesso!"
       - store_artifacts:
           path: /tmp/tun2socks-2.6.0/
-          destination: tun2socks-binaries
+          destination: tun2socks-libs
 
 workflows:
   version: 2
