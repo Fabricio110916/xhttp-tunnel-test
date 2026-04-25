@@ -30,34 +30,44 @@ jobs:
             sed -i 's/^go 1.23.0/go 1.23/' go.mod
             go mod tidy
       - run:
-          name: Rename main() to runMain() in main.go
+          name: Restore main.go and create export package
           command: |
             cd /tmp/tun2socks-2.6.0
-            sed -i 's/func main()/func runMain()/' main.go
-      - run:
-          name: Create export.go (line by line)
-          command: |
-            cd /tmp/tun2socks-2.6.0
-            echo 'package main' > export.go
-            echo '' >> export.go
-            echo 'import "C"' >> export.go
-            echo 'import (' >> export.go
-            echo '    "fmt"' >> export.go
-            echo '    "os"' >> export.go
-            echo ')' >> export.go
-            echo '' >> export.go
-            echo '//export StartTun2socks' >> export.go
-            echo 'func StartTun2socks(cProxy *C.char, cDevice *C.char, cMtu C.int) C.int {' >> export.go
-            echo '    proxy := C.GoString(cProxy)' >> export.go
-            echo '    device := C.GoString(cDevice)' >> export.go
-            echo '    mtu := int(cMtu)' >> export.go
-            echo '    os.Args = []string{"tun2socks", "-proxy", proxy, "-device", device, "-mtu", fmt.Sprintf("%d", mtu), "-loglevel", "info"}' >> export.go
-            echo '    go runMain()' >> export.go
-            echo '    return 0' >> export.go
-            echo '}' >> export.go
-            echo '' >> export.go
-            echo '//export StopTun2socks' >> export.go
-            echo 'func StopTun2socks() {}' >> export.go
+            # RESTAURAR main() original!
+            sed -i 's/func runMain()/func main()/' main.go
+            
+            # Criar pasta export com seu próprio main
+            mkdir -p export
+            cat > export/export.go << GOEOF
+            package export
+            
+            import "C"
+            import (
+                "fmt"
+                "os"
+            )
+            
+            //export StartTun2socks
+            func StartTun2socks(cProxy *C.char, cDevice *C.char, cMtu C.int) C.int {
+                proxy := C.GoString(cProxy)
+                device := C.GoString(cDevice)
+                mtu := int(cMtu)
+            
+                os.Args = []string{
+                    "tun2socks",
+                    "-proxy", proxy,
+                    "-device", device,
+                    "-mtu", fmt.Sprintf("%d", mtu),
+                    "-loglevel", "info",
+                }
+            
+                go main.main()
+                return 0
+            }
+            
+            //export StopTun2socks
+            func StopTun2socks() {}
+            GOEOF
       - run:
           name: Build .so for Android ARM64
           command: |
@@ -69,7 +79,7 @@ jobs:
             export GOOS=android
             export GOARCH=arm64
             cd /tmp/tun2socks-2.6.0
-            go build -o libtun2socks.so -buildmode=c-shared .
+            go build -o libtun2socks.so -buildmode=c-shared ./export/
             ls -la libtun2socks.so
       - store_artifacts:
           path: /tmp/tun2socks-2.6.0/libtun2socks.so
