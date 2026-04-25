@@ -15,8 +15,7 @@ jobs:
             cd /tmp/ndk
             wget -q https://dl.google.com/android/repository/android-ndk-r26d-linux.zip
             unzip -q android-ndk-r26d-linux.zip
-            export ANDROID_NDK_HOME=/tmp/ndk/android-ndk-r26d
-            echo "NDK installed at $ANDROID_NDK_HOME"
+            echo "NDK installed"
       - run:
           name: Download tun2socks source
           command: |
@@ -31,42 +30,34 @@ jobs:
             sed -i 's/^go 1.23.0/go 1.23/' go.mod
             go mod tidy
       - run:
-          name: Create export.go with JNI functions (NO main)
+          name: Rename main() to runMain() in main.go
           command: |
             cd /tmp/tun2socks-2.6.0
-            cat > export.go << 'GOEOF'
-            package main
-            
-            import "C"
-            import (
-                "fmt"
-                "os"
-            )
-            
-            //export StartTun2socks
-            func StartTun2socks(cProxy *C.char, cDevice *C.char, cMtu C.int) C.int {
-                proxy := C.GoString(cProxy)
-                device := C.GoString(cDevice)
-                mtu := int(cMtu)
-            
-                os.Args = []string{
-                    "tun2socks",
-                    "-proxy", proxy,
-                    "-device", device,
-                    "-mtu", fmt.Sprintf("%d", mtu),
-                    "-loglevel", "info",
-                }
-            
-                go runMain()
-                return 0
-            }
-            
-            //export StopTun2socks
-            func StopTun2socks() {}
-            GOEOF
-            
-            # Rename main() in main.go to runMain()
             sed -i 's/func main()/func runMain()/' main.go
+      - run:
+          name: Create export.go (line by line)
+          command: |
+            cd /tmp/tun2socks-2.6.0
+            echo 'package main' > export.go
+            echo '' >> export.go
+            echo 'import "C"' >> export.go
+            echo 'import (' >> export.go
+            echo '    "fmt"' >> export.go
+            echo '    "os"' >> export.go
+            echo ')' >> export.go
+            echo '' >> export.go
+            echo '//export StartTun2socks' >> export.go
+            echo 'func StartTun2socks(cProxy *C.char, cDevice *C.char, cMtu C.int) C.int {' >> export.go
+            echo '    proxy := C.GoString(cProxy)' >> export.go
+            echo '    device := C.GoString(cDevice)' >> export.go
+            echo '    mtu := int(cMtu)' >> export.go
+            echo '    os.Args = []string{"tun2socks", "-proxy", proxy, "-device", device, "-mtu", fmt.Sprintf("%d", mtu), "-loglevel", "info"}' >> export.go
+            echo '    go runMain()' >> export.go
+            echo '    return 0' >> export.go
+            echo '}' >> export.go
+            echo '' >> export.go
+            echo '//export StopTun2socks' >> export.go
+            echo 'func StopTun2socks() {}' >> export.go
       - run:
           name: Build .so for Android ARM64
           command: |
