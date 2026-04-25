@@ -26,16 +26,11 @@ class ProtoVpnService : VpnService() {
         logCallback?.invoke(msg)
     }
     
-    override fun onCreate() {
-        super.onCreate()
-        log("📱 onCreate")
-    }
+    override fun onCreate() { super.onCreate() }
     
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == "STOP") { stopVpn(); return START_NOT_STICKY }
-        if (!isRunning) {
-            thread { startVpn() }
-        }
+        if (!isRunning) { thread { startVpn() } }
         return START_STICKY
     }
     
@@ -43,28 +38,26 @@ class ProtoVpnService : VpnService() {
         isRunning = true
         
         try {
-            // PASSO 1: TLS (igual ao teste que funcionou!)
-            log("[1/3] Conectando TLS...")
+            // PASSO 1: TLS (já funciona)
+            log("[1/4] TLS...")
             val rawSocket = Socket()
             rawSocket.connect(InetSocketAddress("168.138.147.212", 443), 10000)
-            
             val ctx = SSLContext.getInstance("TLS")
             ctx.init(null, arrayOf(TrustAll()), java.security.SecureRandom())
             tlsSocket = ctx.socketFactory.createSocket(rawSocket, "168.138.147.212", 443, true) as SSLSocket
             tlsSocket?.startHandshake()
-            log("✅ TLS OK")
             
-            // Enviar POST
             val w = OutputStreamWriter(tlsSocket!!.outputStream)
             w.write("POST /ssh HTTP/1.1\r\nHost: oracle.koom.pp.ua\r\nContent-Length: 0\r\n\r\n")
             w.flush()
             val r = BufferedReader(InputStreamReader(tlsSocket!!.inputStream))
             var line: String?
             while (r.readLine().also { line = it } != null) { if (line!!.isEmpty()) break }
-            log("✅ POST OK")
+            protect(tlsSocket!!)
+            log("✅ TLS")
             
-            // PASSO 2: VPN (igual ao teste que funcionou!)
-            log("[2/3] Criando VPN...")
+            // PASSO 2: VPN (já funciona)
+            log("[2/4] VPN...")
             val builder = Builder()
                 .setSession("ProtoVPN")
                 .setMtu(1500)
@@ -74,20 +67,48 @@ class ProtoVpnService : VpnService() {
                 .addRoute("0.0.0.0", 0)
             
             vpnInterface = builder.establish() ?: throw Exception("VPN null")
-            log("✅ VPN criada!")
+            log("✅ VPN")
             
-            // PASSO 3: Aguardar (SEM encaminhamento!)
-            log("[3/3] 🎉 VPN + TLS OK!")
-            log("📍 IP: 10.8.0.2")
-            log("⏸ Aguardando 30s (sem encaminhamento)...")
+            // PASSO 3: Encaminhamento (COM PROTEÇÃO em cada thread!)
+            log("[3/4] Encaminhamento...")
             
-            for (i in 1..30) {
-                if (!isRunning) break
-                Thread.sleep(1000)
-                if (i % 10 == 0) log("   ⏰ ${i}s")
+            val tlsIn = tlsSocket!!.inputStream
+            val tlsOut = tlsSocket!!.outputStream
+            
+            // Upload thread
+            thread(name = "Upload") {
+                try {
+                    val vpnIn = FileInputStream(vpnInterface!!.fileDescriptor)
+                    val buf = ByteArray(32768)
+                    var len: Int
+                    while (isRunning) {
+                        len = vpnIn.read(buf)
+                        if (len > 0) { tlsOut.write(buf, 0, len); tlsOut.flush() }
+                    }
+                } catch (e: Exception) {
+                    // Apenas log, NÃO crasha!
+                    if (isRunning) Log.d("ProtoVPN", "Upload: ${e.message}")
+                }
             }
             
-            if (isRunning) log("✅ VPN + TLS ESTÁVEL POR 30s!")
+            // Download thread
+            thread(name = "Download") {
+                try {
+                    val vpnOut = FileOutputStream(vpnInterface!!.fileDescriptor)
+                    val buf = ByteArray(32768)
+                    var len: Int
+                    while (isRunning) {
+                        len = tlsIn.read(buf)
+                        if (len > 0) { vpnOut.write(buf, 0, len); vpnOut.flush() }
+                    }
+                } catch (e: Exception) {
+                    // Apenas log, NÃO crasha!
+                    if (isRunning) Log.d("ProtoVPN", "Download: ${e.message}")
+                }
+            }
+            
+            log("[4/4] ?? VPN COMPLETA!")
+            log("?? IP: 10.8.0.2")
             
         } catch (e: Exception) {
             log("❌ ${e.message}")
@@ -100,7 +121,6 @@ class ProtoVpnService : VpnService() {
         try { tlsSocket?.close() } catch(e: Exception) {}
         try { vpnInterface?.close() } catch(e: Exception) {}
         stopSelf()
-        log("⏹ Parado")
     }
     
     override fun onDestroy() { stopVpn(); super.onDestroy() }
