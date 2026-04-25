@@ -4,6 +4,8 @@ import android.app.*
 import android.content.Intent
 import android.net.VpnService
 import android.os.*
+import android.system.Os
+import android.system.OsConstants
 import android.util.Log
 import java.io.*
 import java.net.*
@@ -65,16 +67,17 @@ class ProtoVpnService : VpnService() {
                 .addDnsServer("1.1.1.1")
             
             vpnInterface = builder.establish() ?: throw Exception("VPN null")
+            val fd = vpnInterface!!.fileDescriptor
             log("✅ VPN")
             
             log("[3/4] Encaminhamento...")
             val tlsIn = tlsSocket!!.inputStream
             val tlsOut = tlsSocket!!.outputStream
             
-            // Upload: FileInputStream FUNCIONA
+            // Upload: FileInputStream (FUNCIONA)
             thread(name = "Upload") {
                 try {
-                    val vpnIn = FileInputStream(vpnInterface!!.fileDescriptor)
+                    val vpnIn = FileInputStream(fd)
                     val buf = ByteArray(32768)
                     var len: Int
                     while (isRunning) {
@@ -86,18 +89,17 @@ class ProtoVpnService : VpnService() {
                 }
             }
             
-            // Download: AutoCloseOutputStream FUNCIONA no Android 14
+            // Download: Usar Os.write() diretamente no FD!
             thread(name = "Download") {
                 try {
-                    val vpnOut = ParcelFileDescriptor.AutoCloseOutputStream(vpnInterface!!)
                     val buf = ByteArray(32768)
                     var len: Int
                     var total = 0L
                     while (isRunning) {
                         len = tlsIn.read(buf)
                         if (len > 0) {
-                            vpnOut.write(buf, 0, len)
-                            vpnOut.flush()
+                            // Escrever diretamente no FD usando Os.write()
+                            Os.write(fd, buf, 0, len)
                             total += len
                             if (total % 50000 == 0L) log("?? Download: $total bytes")
                         }
