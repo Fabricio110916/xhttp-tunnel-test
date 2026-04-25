@@ -4,8 +4,6 @@ import android.app.*
 import android.content.Intent
 import android.net.VpnService
 import android.os.*
-import android.system.Os
-import android.system.OsConstants
 import android.util.Log
 import java.io.*
 import java.net.*
@@ -28,11 +26,30 @@ class ProtoVpnService : VpnService() {
         try { logCallback?.invoke(msg) } catch(e: Exception) {}
     }
     
-    override fun onCreate() { super.onCreate() }
+    override fun onCreate() { 
+        super.onCreate()
+        log("═══════════════════════════════════")
+        log("?? ProtoVPN Service CRIADO")
+        log("═══════════════════════════════════")
+    }
     
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.action == "STOP") { stopVpn(); return START_NOT_STICKY }
-        if (!isRunning) { thread { startVpn() } }
+        log("?? onStartCommand() chamado")
+        log("   action: ${intent?.action ?: "START"}")
+        log("   flags: $flags")
+        
+        if (intent?.action == "STOP") {
+            log("?? Ação STOP detectada!")
+            stopVpn()
+            return START_NOT_STICKY
+        }
+        
+        if (!isRunning) {
+            log("▶ Iniciando VPN em thread separada...")
+            thread(name = "VPN-Thread") { startVpn() }
+        } else {
+            log("⚠️ VPN já está rodando!")
+        }
         return START_STICKY
     }
     
@@ -40,92 +57,179 @@ class ProtoVpnService : VpnService() {
         isRunning = true
         
         try {
-            log("[1/4] TLS...")
+            // ================================================================
+            // PASSO 1: DNS + TCP
+            // ================================================================
+            log("")
+            log("═══════════════════════════════════")
+            log(" PASSO 1/4: CONEXÃO DE REDE")
+            log("═══════════════════════════════════")
+            
+            log("?? Resolvendo DNS: oracle.koom.pp.ua...")
+            val addr = InetAddress.getByName("oracle.koom.pp.ua")
+            log("   ✅ DNS resolvido: ${addr.hostAddress}")
+            
+            log("?? Conectando TCP em ${addr.hostAddress}:443...")
             val rawSocket = Socket()
-            rawSocket.connect(InetSocketAddress("168.138.147.212", 443), 10000)
+            rawSocket.connect(InetSocketAddress(addr.hostAddress, 443), 10000)
+            log("   ✅ TCP conectado!")
+            log("   ?? Local: ${rawSocket.localAddress}:${rawSocket.localPort}")
+            log("   ?? Remoto: ${rawSocket.inetAddress}:${rawSocket.port}")
+            
+            // ================================================================
+            // PASSO 2: TLS
+            // ================================================================
+            log("")
+            log("═══════════════════════════════════")
+            log(" PASSO 2/4: HANDSHAKE TLS")
+            log("═══════════════════════════════════")
+            
+            log("?? Iniciando handshake TLS...")
             val ctx = SSLContext.getInstance("TLS")
             ctx.init(null, arrayOf(TrustAll()), java.security.SecureRandom())
-            tlsSocket = ctx.socketFactory.createSocket(rawSocket, "168.138.147.212", 443, true) as SSLSocket
+            tlsSocket = ctx.socketFactory.createSocket(rawSocket, "oracle.koom.pp.ua", 443, true) as SSLSocket
             tlsSocket?.startHandshake()
+            log("   ✅ TLS estabelecido!")
+            log("   ?? Cipher: ${tlsSocket?.session?.cipherSuite}")
+            log("   ?? Protocolo: ${tlsSocket?.session?.protocol}")
             
+            // ================================================================
+            // PASSO 3: POST /ssh
+            // ================================================================
+            log("")
+            log("═══════════════════════════════════")
+            log(" PASSO 3/4: AUTENTICAÇÃO XHTTP")
+            log("═══════════════════════════════════")
+            
+            log("?? Enviando POST /ssh...")
             val w = OutputStreamWriter(tlsSocket!!.outputStream)
-            w.write("POST /ssh HTTP/1.1\r\nHost: oracle.koom.pp.ua\r\nContent-Length: 0\r\n\r\n")
+            w.write("POST /ssh HTTP/1.1\r\n")
+            w.write("Host: oracle.koom.pp.ua\r\n")
+            w.write("Content-Length: 0\r\n")
+            w.write("Connection: keep-alive\r\n\r\n")
             w.flush()
+            log("   ✅ POST enviado!")
+            
+            log("?? Aguardando resposta...")
             val r = BufferedReader(InputStreamReader(tlsSocket!!.inputStream))
             var line: String?
-            while (r.readLine().also { line = it } != null) { if (line!!.isEmpty()) break }
-            protect(tlsSocket!!)
-            log("✅ TLS")
+            var statusLine = ""
+            while (r.readLine().also { line = it } != null) {
+                log("   ?? $line")
+                if (line!!.startsWith("HTTP/")) statusLine = line!!
+                if (line!!.isEmpty()) break
+            }
+            log("   ✅ Resposta: $statusLine")
             
-            log("[2/4] VPN...")
+            // ================================================================
+            // PASSO 4: VPN
+            // ================================================================
+            log("")
+            log("═══════════════════════════════════")
+            log(" PASSO 4/4: CRIAÇÃO DA VPN")
+            log("═══════════════════════════════════")
+            
+            log("?? Configurando interface TUN...")
             val builder = Builder()
                 .setSession("ProtoVPN")
                 .setMtu(1500)
                 .addAddress("10.8.0.2", 32)
-                .addRoute("168.138.147.212", 32)
                 .addRoute("0.0.0.0", 0)
                 .addDnsServer("1.1.1.1")
+                .addDnsServer("8.8.8.8")
             
-            vpnInterface = builder.establish() ?: throw Exception("VPN null")
-            val fd = vpnInterface!!.fileDescriptor
-            log("✅ VPN")
+            log("   ?? Session: ProtoVPN")
+            log("   ?? IP: 10.8.0.2/32")
+            log("   ?? Rota: 0.0.0.0/0")
+            log("   ?? DNS: 1.1.1.1, 8.8.8.8")
+            log("   ?? MTU: 1500")
             
-            log("[3/4] Encaminhamento...")
-            val tlsIn = tlsSocket!!.inputStream
-            val tlsOut = tlsSocket!!.outputStream
+            log("   ⏳ Chamando establish()...")
+            vpnInterface = builder.establish()
             
-            // Upload: FileInputStream (FUNCIONA)
-            thread(name = "Upload") {
-                try {
-                    val vpnIn = FileInputStream(fd)
-                    val buf = ByteArray(32768)
-                    var len: Int
-                    while (isRunning) {
-                        len = vpnIn.read(buf)
-                        if (len > 0) { tlsOut.write(buf, 0, len); tlsOut.flush() }
-                    }
-                } catch (e: Exception) {
-                    if (isRunning) log("?? ${e.message}")
-                }
+            if (vpnInterface == null) {
+                log("   ❌ establish() retornou NULL!")
+                throw Exception("VPN null")
             }
             
-            // Download: Usar Os.write() diretamente no FD!
-            thread(name = "Download") {
-                try {
-                    val buf = ByteArray(32768)
-                    var len: Int
-                    var total = 0L
-                    while (isRunning) {
-                        len = tlsIn.read(buf)
-                        if (len > 0) {
-                            // Escrever diretamente no FD usando Os.write()
-                            Os.write(fd, buf, 0, len)
-                            total += len
-                            if (total % 50000 == 0L) log("?? Download: $total bytes")
-                        }
-                    }
-                } catch (e: Exception) {
-                    if (isRunning) log("?? ${e.message}")
+            log("   ✅ VPN CRIADA COM SUCESSO!")
+            log("   ?? Descritor: $vpnInterface")
+            log("")
+            log("═══════════════════════════════════")
+            log(" ?? VPN ATIVA!")
+            log("═══════════════════════════════════")
+            log(" ?? IP Virtual: 10.8.0.2")
+            log(" ?? Ícone de VPN: DEVE aparecer!")
+            log(" ?? Túnel TLS: ativo")
+            log(" ?? Cipher: ${tlsSocket?.session?.cipherSuite}")
+            log("")
+            log(" ⏸ Monitorando conexão...")
+            log("")
+            
+            // Monitoramento
+            var segundos = 0
+            while (isRunning) {
+                Thread.sleep(1000)
+                segundos++
+                
+                if (segundos % 10 == 0) {
+                    log("⏰ ${segundos}s | VPN: ATIVA | TLS: ${if (tlsSocket?.isConnected == true) "CONECTADO" else "DESCONECTADO"}")
+                }
+                
+                if (segundos >= 120) {
+                    log("")
+                    log("═══════════════════════════════════")
+                    log(" ✅ VPN ESTÁVEL POR 120 SEGUNDOS!")
+                    log("═══════════════════════════════════")
+                    break
                 }
             }
-            
-            log("[4/4] ?? VPN COMPLETA!")
             
         } catch (e: Exception) {
-            log("❌ ${e.message}")
+            log("")
+            log("═══════════════════════════════════")
+            log(" ❌ FALHA NA CONEXÃO")
+            log("═══════════════════════════════════")
+            log("   Erro: ${e.message}")
+            log("   Tipo: ${e.javaClass.simpleName}")
+            e.printStackTrace()
             stopVpn()
         }
     }
     
     private fun stopVpn() {
+        log("")
+        log("?? PARANDO VPN...")
         isRunning = false
-        try { tlsSocket?.close() } catch(e: Exception) {}
-        try { vpnInterface?.close() } catch(e: Exception) {}
-        tlsSocket = null; vpnInterface = null
-        stopForeground(true); stopSelf()
+        
+        try { 
+            tlsSocket?.close()
+            log("   ✅ TLS socket fechado")
+        } catch(e: Exception) {
+            log("   ⚠️ Erro ao fechar TLS: ${e.message}")
+        }
+        
+        try { 
+            vpnInterface?.close()
+            log("   ✅ Interface VPN fechada")
+        } catch(e: Exception) {
+            log("   ⚠️ Erro ao fechar VPN: ${e.message}")
+        }
+        
+        tlsSocket = null
+        vpnInterface = null
+        
+        stopForeground(true)
+        stopSelf()
+        log("   ✅ Serviço parado completamente")
+        log("")
     }
     
-    override fun onDestroy() { stopVpn(); super.onDestroy() }
+    override fun onDestroy() { 
+        log("?? onDestroy()")
+        stopVpn()
+        super.onDestroy() 
+    }
     
     class TrustAll : X509TrustManager {
         override fun checkClientTrusted(chain: Array<java.security.cert.X509Certificate>, authType: String) {}
