@@ -10,8 +10,8 @@ android {
         applicationId "com.xhttp.tunnel"
         minSdk 23
         targetSdk 34
-        versionCode 300
-        versionName "300.0"
+        versionCode 301
+        versionName "301.0"
     }
     buildTypes { release { minifyEnabled false } }
     compileOptions {
@@ -24,6 +24,4 @@ android {
 dependencies {
     implementation 'androidx.core:core-ktx:1.10.0'
     implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation 'com.google.android.material:material:1.9.0'
-    implementation(files("libs/dtunnel.aar"))
 }

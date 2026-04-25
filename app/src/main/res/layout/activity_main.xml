@@ -1,177 +1,67 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:orientation="vertical"
     android:padding="12dp">
+    
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="ProtoVPN (sem AAR)"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:gravity="center"
+        android:layout_marginBottom="8dp"/>
+    
+    <TextView
+        android:id="@+id/statusText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Parado"
+        android:textSize="14sp"
+        android:gravity="center"
+        android:layout_marginBottom="8dp"/>
     
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical">
+        android:orientation="horizontal"
+        android:layout_marginBottom="8dp">
         
-        <TextView
-            android:layout_width="match_parent"
+        <Button
+            android:id="@+id/startButton"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:text="DTProto XHTTP VPN"
-            android:textSize="20sp"
-            android:textStyle="bold"
-            android:gravity="center"
-            android:layout_marginBottom="16dp"/>
+            android:layout_weight="1"
+            android:text="CONECTAR VPN"
+            android:layout_marginEnd="4dp"/>
         
-        <!-- HOST -->
-        <TextView
-            android:layout_width="wrap_content"
+        <Button
+            android:id="@+id/stopButton"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:text="?? Host:"
-            android:textStyle="bold"/>
-        <EditText
-            android:id="@+id/hostInput"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="oracle.koom.pp.ua"
-            android:inputType="textUri"
-            android:layout_marginBottom="8dp"/>
-        
-        <!-- PORTA -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="?? Porta:"
-            android:textStyle="bold"/>
-        <EditText
-            android:id="@+id/portInput"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="443"
-            android:inputType="number"
-            android:layout_marginBottom="8dp"/>
-        
-        <!-- SNI -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="?? SNI:"
-            android:textStyle="bold"/>
-        <EditText
-            android:id="@+id/sniInput"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="oracle.koom.pp.ua"
-            android:inputType="textUri"
-            android:layout_marginBottom="8dp"/>
-        
-        <!-- PROXY -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="?? Proxy:"
-            android:textStyle="bold"/>
-        <EditText
-            android:id="@+id/proxyInput"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="oracle.koom.pp.ua"
-            android:inputType="textUri"
-            android:layout_marginBottom="8dp"/>
-        
-        <!-- TLS -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginBottom="8dp">
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="?? TLS:"
-                android:textStyle="bold"
-                android:layout_marginEnd="8dp"/>
-            <Switch
-                android:id="@+id/tlsSwitch"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:checked="true"/>
-        </LinearLayout>
-        
-        <!-- USUÁRIO -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="?? Usuário:"
-            android:textStyle="bold"/>
-        <EditText
-            android:id="@+id/userInput"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="(vazio = sem auth)"
-            android:inputType="text"
-            android:layout_marginBottom="8dp"/>
-        
-        <!-- SENHA -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="?? Senha:"
-            android:textStyle="bold"/>
-        <EditText
-            android:id="@+id/passInput"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="(vazio = sem auth)"
-            android:inputType="textPassword"
-            android:layout_marginBottom="16dp"/>
-        
-        <!-- BOTÕES -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginBottom="8dp">
-            
-            <Button
-                android:id="@+id/startButton"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="CONECTAR"
-                android:layout_marginEnd="4dp"/>
-            
-            <Button
-                android:id="@+id/stopButton"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="DESCONECTAR"
-                android:layout_marginStart="4dp"/>
-        </LinearLayout>
-        
-        <!-- STATUS -->
-        <TextView
-            android:id="@+id/statusText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Parado"
-            android:textSize="14sp"
-            android:gravity="center"
-            android:layout_marginBottom="8dp"/>
-        
-        <!-- LOGS -->
-        <ScrollView
-            android:id="@+id/terminalScroll"
-            android:layout_width="match_parent"
-            android:layout_height="200dp"
-            android:background="#000000"
-            android:padding="8dp">
-            
-            <TextView
-                android:id="@+id/terminalText"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text=""
-                android:textColor="#00FF00"
-                android:textSize="11sp"
-                android:fontFamily="monospace"/>
-        </ScrollView>
-        
+            android:layout_weight="1"
+            android:text="DESCONECTAR"
+            android:layout_marginStart="4dp"/>
     </LinearLayout>
-</ScrollView>
+    
+    <ScrollView
+        android:id="@+id/terminalScroll"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:background="#000000"
+        android:padding="8dp">
+        
+        <TextView
+            android:id="@+id/terminalText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textColor="#00FF00"
+            android:textSize="11sp"
+            android:fontFamily="monospace"/>
+    </ScrollView>
+    
+</LinearLayout>
