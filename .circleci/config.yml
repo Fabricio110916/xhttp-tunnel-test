@@ -30,31 +30,38 @@ jobs:
             sed -i 's/^go 1.23.0/go 1.23/' go.mod
             go mod tidy
       - run:
-          name: Create export directory and export.go
+          name: Prepare main.go for shared library (Rename main to Run)
           command: |
             cd /tmp/tun2socks-2.6.0
-            mkdir -p export
-            echo 'package export' > export/export.go
-            echo '' >> export/export.go
-            echo 'import "C"' >> export/export.go
-            echo 'import (' >> export/export.go
-            echo '    "fmt"' >> export/export.go
-            echo '    "os"' >> export/export.go
-            echo '    main_pkg "github.com/xjasonlyu/tun2socks/v2"' >> export/export.go
-            echo ')' >> export/export.go
-            echo '' >> export/export.go
-            echo '//export StartTun2socks' >> export/export.go
-            echo 'func StartTun2socks(cProxy *C.char, cDevice *C.char, cMtu C.int) C.int {' >> export/export.go
-            echo '    proxy := C.GoString(cProxy)' >> export/export.go
-            echo '    device := C.GoString(cDevice)' >> export/export.go
-            echo '    mtu := int(cMtu)' >> export/export.go
-            echo '    os.Args = []string{"tun2socks", "-proxy", proxy, "-device", device, "-mtu", fmt.Sprintf("%d", mtu), "-loglevel", "info"}' >> export/export.go
-            echo '    go main_pkg.main()' >> export/export.go
-            echo '    return 0' >> export/export.go
-            echo '}' >> export/export.go
-            echo '' >> export/export.go
-            echo '//export StopTun2socks' >> export/export.go
-            echo 'func StopTun2socks() {}' >> export/export.go
+            # Renomeia a função main() para Run()
+            sed -i 's/func main()/func Run()/' main.go
+      - run:
+          name: Create bridge.go with JNI exports and new main()
+          command: |
+            cd /tmp/tun2socks-2.6.0
+            echo 'package main' > bridge.go
+            echo '' >> bridge.go
+            echo 'import "C"' >> bridge.go
+            echo 'import (' >> bridge.go
+            echo '    "fmt"' >> bridge.go
+            echo '    "os"' >> bridge.go
+            echo ')' >> bridge.go
+            echo '' >> bridge.go
+            echo '//export StartTun2socks' >> bridge.go
+            echo 'func StartTun2socks(cProxy *C.char, cDevice *C.char, cMtu C.int) C.int {' >> bridge.go
+            echo '    proxy := C.GoString(cProxy)' >> bridge.go
+            echo '    device := C.GoString(cDevice)' >> bridge.go
+            echo '    mtu := int(cMtu)' >> bridge.go
+            echo '    os.Args = []string{"tun2socks", "-proxy", proxy, "-device", device, "-mtu", fmt.Sprintf("%d", mtu), "-loglevel", "info"}' >> bridge.go
+            echo '    go Run()' >> bridge.go
+            echo '    return 0' >> bridge.go
+            echo '}' >> bridge.go
+            echo '' >> bridge.go
+            echo '//export StopTun2socks' >> bridge.go
+            echo 'func StopTun2socks() {}' >> bridge.go
+            echo '' >> bridge.go
+            # Para o buildmode c-shared, precisa de um main vazio
+            echo 'func main() {}' >> bridge.go
       - run:
           name: Build .so for Android ARM64
           command: |
@@ -66,7 +73,7 @@ jobs:
             export GOOS=android
             export GOARCH=arm64
             cd /tmp/tun2socks-2.6.0
-            go build -o libtun2socks.so -buildmode=c-shared ./export/
+            go build -o libtun2socks.so -buildmode=c-shared .
             ls -la libtun2socks.so
       - store_artifacts:
           path: /tmp/tun2socks-2.6.0/libtun2socks.so
