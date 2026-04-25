@@ -24,12 +24,12 @@ jobs:
             wget -q https://github.com/xjasonlyu/tun2socks/archive/refs/tags/v2.6.0.tar.gz
             tar -xzf v2.6.0.tar.gz
       - run:
-          name: Fix go.mod version
+          name: Fix go.mod and Tidy
           command: |
             cd /tmp/tun2socks-2.6.0
             sed -i 's/^go 1.23.1/go 1.23/' go.mod
             sed -i 's/^go 1.23.0/go 1.23/' go.mod
-            cat go.mod | head -5
+            go mod tidy
       - run:
           name: Create export.go with JNI functions
           command: |
