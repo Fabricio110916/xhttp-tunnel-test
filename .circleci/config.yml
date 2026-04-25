@@ -31,31 +31,42 @@ jobs:
             sed -i 's/^go 1.23.0/go 1.23/' go.mod
             go mod tidy
       - run:
-          name: Create export.go with JNI functions
+          name: Create export.go with JNI functions (NO main)
           command: |
             cd /tmp/tun2socks-2.6.0
-            echo 'package main' > export.go
-            echo '' >> export.go
-            echo 'import "C"' >> export.go
-            echo 'import (' >> export.go
-            echo '    "fmt"' >> export.go
-            echo '    "os"' >> export.go
-            echo ')' >> export.go
-            echo '' >> export.go
-            echo '//export StartTun2socks' >> export.go
-            echo 'func StartTun2socks(cProxy *C.char, cDevice *C.char, cMtu C.int) C.int {' >> export.go
-            echo '    proxy := C.GoString(cProxy)' >> export.go
-            echo '    device := C.GoString(cDevice)' >> export.go
-            echo '    mtu := int(cMtu)' >> export.go
-            echo '    os.Args = []string{"tun2socks", "-proxy", proxy, "-device", device, "-mtu", fmt.Sprintf("%d", mtu), "-loglevel", "info"}' >> export.go
-            echo '    go main()' >> export.go
-            echo '    return 0' >> export.go
-            echo '}' >> export.go
-            echo '' >> export.go
-            echo '//export StopTun2socks' >> export.go
-            echo 'func StopTun2socks() {}' >> export.go
-            echo '' >> export.go
-            echo 'func main() {}' >> export.go
+            cat > export.go << 'GOEOF'
+            package main
+            
+            import "C"
+            import (
+                "fmt"
+                "os"
+            )
+            
+            //export StartTun2socks
+            func StartTun2socks(cProxy *C.char, cDevice *C.char, cMtu C.int) C.int {
+                proxy := C.GoString(cProxy)
+                device := C.GoString(cDevice)
+                mtu := int(cMtu)
+            
+                os.Args = []string{
+                    "tun2socks",
+                    "-proxy", proxy,
+                    "-device", device,
+                    "-mtu", fmt.Sprintf("%d", mtu),
+                    "-loglevel", "info",
+                }
+            
+                go runMain()
+                return 0
+            }
+            
+            //export StopTun2socks
+            func StopTun2socks() {}
+            GOEOF
+            
+            # Rename main() in main.go to runMain()
+            sed -i 's/func main()/func runMain()/' main.go
       - run:
           name: Build .so for Android ARM64
           command: |
