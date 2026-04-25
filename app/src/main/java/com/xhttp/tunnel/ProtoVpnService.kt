@@ -26,14 +26,11 @@ class ProtoVpnService : VpnService() {
         try { logCallback?.invoke(msg) } catch(e: Exception) {}
     }
     
-    override fun onCreate() { 
-        super.onCreate()
-        log("?? ProtoVPN Service CRIADO")
-    }
+    override fun onCreate() { super.onCreate() }
     
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == "STOP") { stopVpn(); return START_NOT_STICKY }
-        if (!isRunning) { thread(name = "VPN-Thread") { startVpn() } }
+        if (!isRunning) { thread { startVpn() } }
         return START_STICKY
     }
     
@@ -41,51 +38,99 @@ class ProtoVpnService : VpnService() {
         isRunning = true
         
         try {
-            log("[1/4] Conexão IPv4...")
+            log("═══════════════════════════════════")
+            log("?? PLANO B: WebSocket + SSH")
+            log("═══════════════════════════════════")
             
-            // ?? FORÇAR IPv4!
+            // PASSO 1: TLS
+            log("[1/5] TLS...")
             val rawSocket = Socket()
             rawSocket.connect(InetSocketAddress("168.138.147.212", 443), 10000)
-            log("✅ TCP IPv4: ${rawSocket.inetAddress.hostAddress}")
-            
             val ctx = SSLContext.getInstance("TLS")
             ctx.init(null, arrayOf(TrustAll()), java.security.SecureRandom())
-            tlsSocket = ctx.socketFactory.createSocket(rawSocket, "168.138.147.212", 443, true) as SSLSocket
+            tlsSocket = ctx.socketFactory.createSocket(rawSocket, "oracle.koom.pp.ua", 443, true) as SSLSocket
             tlsSocket?.startHandshake()
             log("✅ TLS: ${tlsSocket?.session?.cipherSuite}")
             
-            log("[2/4] POST...")
+            // PASSO 2: WebSocket Handshake (101 Switching Protocols)
+            log("[2/5] WebSocket handshake...")
             val w = OutputStreamWriter(tlsSocket!!.outputStream)
-            w.write("POST /ssh HTTP/1.1\r\nHost: oracle.koom.pp.ua\r\nContent-Length: 0\r\n\r\n")
+            w.write("GET /ssh HTTP/1.1\r\n")
+            w.write("Host: oracle.koom.pp.ua\r\n")
+            w.write("Upgrade: websocket\r\n")
+            w.write("Connection: Upgrade\r\n")
+            w.write("\r\n")
             w.flush()
+            
+            // Ler resposta
             val r = BufferedReader(InputStreamReader(tlsSocket!!.inputStream))
             var line: String?
-            while (r.readLine().also { line = it } != null) { if (line!!.isEmpty()) break }
+            while (r.readLine().also { line = it } != null) {
+                log("   $line")
+                if (line!!.isEmpty()) break
+            }
+            log("✅ WebSocket conectado!")
             
-            // ?? NÃO PROTEGER - tráfego do TLS vai pela VPN!
-            log("✅ POST OK")
+            // PASSO 3: Proteger socket (para não dar loop)
+            protect(tlsSocket!!)
+            log("[3/5] Socket protegido")
             
-            log("[3/4] VPN...")
+            // PASSO 4: VPN
+            log("[4/5] Criando VPN...")
             val builder = Builder()
                 .setSession("ProtoVPN")
                 .setMtu(1500)
                 .addAddress("10.8.0.2", 32)
-                .addRoute("0.0.0.0", 0)       // IPv4
                 .addDnsServer("1.1.1.1")
                 .addDnsServer("8.8.8.8")
+                .addRoute("0.0.0.0", 0)
             
             vpnInterface = builder.establish() ?: throw Exception("VPN null")
             log("✅ VPN criada!")
             
-            log("[4/4] ?? VPN ATIVA!")
-            log("?? IP: 10.8.0.2")
-            log("⏸ Monitorando...")
+            // PASSO 5: Encaminhar dados (VPN ↔ TLS)
+            log("[5/5] Encaminhando tráfego...")
             
-            var seg = 0
-            while (isRunning && seg < 120) {
-                Thread.sleep(1000); seg++
-                if (seg % 30 == 0) log("⏰ ${seg}s")
+            val tlsIn = tlsSocket!!.inputStream
+            val tlsOut = tlsSocket!!.outputStream
+            val fd = vpnInterface!!.fileDescriptor
+            
+            // Upload: VPN -> TLS
+            thread(name = "Upload") {
+                try {
+                    val vpnIn = FileInputStream(fd)
+                    val buf = ByteArray(32768)
+                    var len: Int
+                    var total = 0L
+                    while (isRunning) {
+                        len = vpnIn.read(buf)
+                        if (len > 0) { tlsOut.write(buf, 0, len); tlsOut.flush(); total += len }
+                    }
+                } catch (e: Exception) {
+                    if (isRunning) log("?? ${e.message}")
+                }
             }
+            
+            // Download: TLS -> VPN
+            thread(name = "Download") {
+                try {
+                    val vpnOut = ParcelFileDescriptor.AutoCloseOutputStream(vpnInterface!!)
+                    val buf = ByteArray(32768)
+                    var len: Int
+                    var total = 0L
+                    while (isRunning) {
+                        len = tlsIn.read(buf)
+                        if (len > 0) { vpnOut.write(buf, 0, len); vpnOut.flush(); total += len }
+                    }
+                } catch (e: Exception) {
+                    if (isRunning) log("?? ${e.message}")
+                }
+            }
+            
+            log("?? VPN COMPLETA!")
+            log("?? IP: 10.8.0.2")
+            log("?? TLS: ${tlsSocket?.session?.cipherSuite}")
+            log("?? WebSocket + SSH ativo!")
             
         } catch (e: Exception) {
             log("❌ ${e.message}")
