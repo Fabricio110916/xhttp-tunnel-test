@@ -12,7 +12,6 @@ import androidx.appcompat.app.AppCompatActivity
 class MainActivity : AppCompatActivity() {
     
     private lateinit var startButton: Button
-    private lateinit var stopButton: Button
     private lateinit var statusText: TextView
     private lateinit var logText: TextView
     private lateinit var scrollView: ScrollView
@@ -24,7 +23,6 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
         
         startButton = findViewById(R.id.startButton)
-        stopButton = findViewById(R.id.stopButton)
         statusText = findViewById(R.id.statusText)
         logText = findViewById(R.id.terminalText)
         scrollView = findViewById(R.id.terminalScroll)
@@ -45,14 +43,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
         
-        stopButton.setOnClickListener {
-            stopService(Intent(this, ProtoVpnService::class.java).apply { action = "STOP" })
-            startButton.isEnabled = true
-            stopButton.isEnabled = false
-            statusText.text = "Parado"
-        }
-        
-        logText.text = "?? ProtoVPN (sem AAR)\n?? 168.138.147.212:443\n\n"
+        logText.text = "?? TESTE VPN MÍNIMA\n(sem TLS, sem túnel)\n\n"
     }
     
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -65,7 +56,6 @@ class MainActivity : AppCompatActivity() {
     private fun startVpn() {
         startService(Intent(this, ProtoVpnService::class.java))
         startButton.isEnabled = false
-        stopButton.isEnabled = true
         statusText.text = "VPN Ativa"
     }
 }
