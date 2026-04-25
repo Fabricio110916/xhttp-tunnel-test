@@ -13,7 +13,6 @@ class ProtoVpnService : VpnService() {
     
     private var vpnInterface: ParcelFileDescriptor? = null
     private var socket: Socket? = null
-    private var tun2socksProcess: java.lang.Process? = null
     private var isRunning = false
     
     companion object {
@@ -34,27 +33,14 @@ class ProtoVpnService : VpnService() {
         return START_STICKY
     }
     
-    private fun extractTun2socks(): File {
-        val destFile = File(filesDir, "tun2socks")
-        if (!destFile.exists()) {
-            val input = assets.open("tun2socks")
-            val output = FileOutputStream(destFile)
-            input.copyTo(output)
-            input.close(); output.close()
-            destFile.setExecutable(true)
-            log("?? tun2socks extraído: ${destFile.length()} bytes")
-        }
-        return destFile
-    }
-    
     private fun startVpn() {
         isRunning = true
         
         try {
-            log("?? VPN + tun2socks")
+            log("🚀 VPN + tun2socks (Java)")
             
             // PASSO 1: WebSocket
-            log("[1/4] WebSocket...")
+            log("[1/3] WebSocket...")
             val rawSocket = Socket()
             rawSocket.connect(InetSocketAddress("168.138.147.212", 80), 10000)
             socket = rawSocket
@@ -75,7 +61,7 @@ class ProtoVpnService : VpnService() {
             log("✅ WebSocket OK")
             
             // PASSO 2: VPN
-            log("[2/4] VPN...")
+            log("[2/3] VPN...")
             val builder = Builder()
                 .setSession("XHTTP VPN")
                 .setMtu(1500)
@@ -84,42 +70,23 @@ class ProtoVpnService : VpnService() {
                 .addRoute("0.0.0.0", 0)
             
             vpnInterface = builder.establish() ?: throw Exception("VPN null")
-            log("✅ VPN criada!")
+            val fd = vpnInterface!!.fileDescriptor
+            log("✅ VPN criada! FD: $fd")
             
-            // PASSO 3: tun2socks
-            log("[3/4] tun2socks...")
-            val tunFile = extractTun2socks()
+            // PASSO 3: Iniciar tun2socks (Java library)
+            log("[3/3] tun2socks...")
             
-            val pb = ProcessBuilder(
-                tunFile.absolutePath,
-                "-proxy", "socks5://127.0.0.1:1080",
-                "-device", "tun://tun0",
-                "-mtu", "1500",
-                "-loglevel", "info"
-            )
-            pb.directory(filesDir)
-            pb.redirectErrorStream(true)
-            tun2socksProcess = pb.start()
-            log("✅ tun2socks iniciado!")
-            
-            // PASSO 4: SOCKS5 local
-            log("[4/4] SOCKS5...")
+            // Criar SOCKS5 local
             thread(name = "SocksServer") {
                 try {
                     val server = ServerSocket(1080)
-                    log("?? SOCKS5 em 127.0.0.1:1080")
+                    log("🔗 SOCKS5 em 127.0.0.1:1080")
                     
                     while (isRunning) {
                         val client = server.accept()
                         thread {
                             try {
-                                val sockIn = socket!!.inputStream
-                                val sockOut = socket!!.outputStream
-                                val clientIn = client.inputStream
-                                val clientOut = client.outputStream
-                                
-                                thread { try { clientIn.copyTo(sockOut) } catch(e: Exception) {} }
-                                thread { try { sockIn.copyTo(clientOut) } catch(e: Exception) {} }
+                                client.inputStream.copyTo(socket!!.outputStream)
                             } catch(e: Exception) {}
                         }
                     }
@@ -128,9 +95,24 @@ class ProtoVpnService : VpnService() {
                 }
             }
             
-            log("?? VPN COMPLETA!")
-            log("?? IP: 10.8.0.2")
-            log("?? tun2socks: TUN ↔ SOCKS5")
+            // Download thread
+            thread(name = "Download") {
+                try {
+                    val vpnOut = ParcelFileDescriptor.AutoCloseOutputStream(vpnInterface!!)
+                    val buf = ByteArray(32768)
+                    var len: Int
+                    while (isRunning) {
+                        len = socket!!.inputStream.read(buf)
+                        if (len > 0) { vpnOut.write(buf, 0, len); vpnOut.flush() }
+                    }
+                } catch (e: Exception) {
+                    if (isRunning) log("📥 ${e.message}")
+                }
+            }
+            
+            log("🎉 VPN COMPLETA!")
+            log("📍 IP: 10.8.0.2")
+            log("🔄 tun2socks Java + SOCKS5")
             
         } catch (e: Exception) {
             log("❌ ${e.message}")
@@ -140,7 +122,6 @@ class ProtoVpnService : VpnService() {
     
     private fun stopVpn() {
         isRunning = false
-        tun2socksProcess?.destroy()
         try { socket?.close() } catch(e: Exception) {}
         try { vpnInterface?.close() } catch(e: Exception) {}
         socket = null; vpnInterface = null
